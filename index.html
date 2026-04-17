@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DrugIQ — Research drug development, faster</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://3dmol.org/build/3Dmol-min.js"></script>
+<style>
+:root{--bg:#0a0e0b;--bg2:#0f1510;--bg3:#141c15;--surface:#1a2318;--surface2:#1f2b1f;--border:rgba(74,180,100,.15);--border2:rgba(74,180,100,.25);--green:#4ab464;--gdim:rgba(74,180,100,.08);--glow:rgba(74,180,100,.12);--text:#e8f0e8;--text2:#8fa88f;--text3:#566356;--amber:#d4a843;--red:#c45c5c;--blue:#5b9bd4;--teal:#45b3a2;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--serif:'Fraunces',serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(74,180,100,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(74,180,100,.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.hdr{position:sticky;top:0;z-index:100;background:rgba(10,14,11,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;gap:1.5rem;height:60px}
+.logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.logo-dot{width:28px;height:28px;border:1.5px solid var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.logo-dot::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+.logo-txt{font-family:var(--serif);font-weight:300;font-size:15px;letter-spacing:.02em}
+.logo-txt b{color:var(--green);font-weight:300}
+.divv{width:1px;height:24px;background:var(--border2);flex-shrink:0}
+.ctx-bar{display:flex;align-items:center;gap:10px;flex:1}
+.ctx-lbl{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;white-space:nowrap}
+.ctx-wrap{position:relative;flex:1;max-width:340px}
+.ctx-in{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:6px 10px 6px 28px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s}
+.ctx-in:focus{border-color:var(--green)}
+.ctx-in::placeholder{color:var(--text3)}
+.ctx-ico{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:12px;height:12px;fill:none;stroke:var(--text3);stroke-width:1.2}
+.stage-badge{font-family:var(--mono);font-size:10px;color:var(--green);background:var(--gdim);border:1px solid var(--border2);border-radius:4px;padding:3px 8px;white-space:nowrap}
+.bytag{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.06em}
+.main{display:flex;min-height:calc(100vh - 60px);position:relative;z-index:1}
+.sidebar{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:1.5rem 0;position:sticky;top:60px;height:calc(100vh - 60px);overflow-y:auto;background:rgba(10,14,11,.5)}
+.ss{padding:0 1rem 1.5rem}
+.ss-lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--text3);margin-bottom:8px;padding:0 4px}
+.tbtn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border-radius:6px;border:none;background:transparent;cursor:pointer;transition:all .15s;text-align:left;margin-bottom:2px}
+.tbtn:hover{background:var(--gdim)}
+.tbtn.on{background:var(--glow);border:1px solid var(--border2)}
+.tnum{font-family:var(--mono);font-size:10px;color:var(--text3);width:16px;flex-shrink:0}
+.tbtn.on .tnum{color:var(--green)}
+.tname{font-size:13px;color:var(--text2);flex:1}
+.tbtn.on .tname{color:var(--text);font-weight:500}
+.tdot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;box-shadow:0 0 4px var(--green)}
+.tdot.warn{background:var(--amber);box-shadow:0 0 4px var(--amber)}
+.tdot.blue{background:var(--blue);box-shadow:0 0 4px var(--blue)}
+.guide-pill{display:flex;align-items:center;gap:6px;padding:6px 14px;margin:0 1rem 1rem;border-radius:5px;font-family:var(--mono);font-size:10px;cursor:pointer;border:1px solid var(--border);transition:all .15s;color:var(--text3)}
+.guide-pill:hover{border-color:var(--border2);color:var(--text2)}
+.guide-pill.on{border-color:rgba(212,168,67,.3);color:var(--amber);background:rgba(212,168,67,.06)}
+.gpill-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.guide-pill.on .gpill-dot{background:var(--amber);box-shadow:0 0 4px var(--amber)}
+.chain-d{padding:0 14px;margin-top:.5rem}
+.cstep{display:flex;align-items:center;gap:6px;padding:4px 0}
+.cdot{width:4px;height:4px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.cdot.on{background:var(--green);box-shadow:0 0 4px var(--green)}
+.clbl{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.06em}
+.clbl.on{color:var(--green)}
+.carr{width:1px;height:8px;background:var(--border2);margin-left:7px}
+.content{flex:1;padding:2rem;max-width:calc(100vw - 220px);min-width:0}
+.ttl{font-family:var(--serif);font-weight:300;font-size:26px;color:var(--text);margin-bottom:4px}
+.ttl span{color:var(--green);font-style:italic}
+.tdesc{font-size:13px;color:var(--text2);line-height:1.6}
+.tag{display:inline-block;font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal);background:rgba(69,179,162,.08);border:1px solid rgba(69,179,162,.2);border-radius:3px;padding:2px 6px;margin-right:6px;margin-bottom:8px}
+/* EDUCATION */
+.plain{display:none}
+body.guide .plain{display:block}
+body.guide .expert{display:none}
+.edu-banner{background:linear-gradient(135deg,rgba(74,180,100,.06),rgba(69,179,162,.06));border:1px solid var(--border2);border-radius:8px;padding:14px 16px;margin-bottom:1.25rem;display:flex;gap:12px;align-items:flex-start}
+.edu-ico{font-size:18px;flex-shrink:0;margin-top:2px}
+.edu-t{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--green);margin-bottom:4px}
+.edu-txt{font-size:12px;color:var(--text2);line-height:1.65}
+.edu-txt strong{color:var(--text);font-weight:500}
+.how-steps{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.25rem}
+.hstep{flex:1;padding:10px 12px;border-right:1px solid var(--border)}
+.hstep:last-child{border-right:none}
+.hstep-n{font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:3px}
+.hstep-t{font-size:11px;color:var(--text2);line-height:1.4}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;margin-bottom:4px}
+.chip{font-family:var(--mono);font-size:10px;color:var(--teal);background:rgba(69,179,162,.08);border:1px solid rgba(69,179,162,.2);border-radius:4px;padding:4px 10px;cursor:pointer;transition:all .15s}
+.chip:hover{background:rgba(69,179,162,.18);border-color:var(--teal)}
+.ptoggle{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text3);cursor:pointer;border:1px solid var(--border);border-radius:4px;padding:4px 10px;background:transparent;transition:all .15s}
+.ptoggle:hover{border-color:var(--border2);color:var(--text2)}
+.ptoggle.on{border-color:var(--green);color:var(--green);background:var(--gdim)}
+.insight{background:var(--bg3);border-left:3px solid var(--green);border-radius:0 6px 6px 0;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.6}
+.insight strong{color:var(--green);font-weight:500}
+/* FORM */
+.fcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;margin-bottom:1.5rem}
+.frow{display:flex;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.fg{flex:1;min-width:200px}
+.flbl{display:block;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px}
+.fin{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s}
+.fin:focus{border-color:var(--green)}
+.fin::placeholder{color:var(--text3)}
+select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23566356'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.runbtn{display:inline-flex;align-items:center;gap:8px;background:var(--green);color:#0a0e0b;border:none;border-radius:6px;padding:9px 20px;font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;letter-spacing:.05em}
+.runbtn:hover{background:#5ac870;transform:translateY(-1px)}
+.runbtn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+/* LOADING */
+.lcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:2rem;text-align:center}
+.lsteps{display:flex;flex-direction:column;gap:8px;margin:1.5rem auto 0;max-width:360px;text-align:left}
+.lstep{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--text3)}
+.lstep.done{color:var(--green)}
+.lstep.active{color:var(--text2)}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--text3);flex-shrink:0}
+.sdot.done{background:var(--green);box-shadow:0 0 4px var(--green)}
+.sdot.active{background:var(--amber);box-shadow:0 0 4px var(--amber);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.spinner{width:32px;height:32px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* RESULTS */
+.rcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.rhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.rtitle{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3)}
+.badge{font-family:var(--mono);font-size:11px;font-weight:500;padding:4px 12px;border-radius:4px;letter-spacing:.05em}
+.ok{background:rgba(74,180,100,.15);color:var(--green);border:1px solid rgba(74,180,100,.3)}
+.warn{background:rgba(212,168,67,.15);color:var(--amber);border:1px solid rgba(212,168,67,.3)}
+.bad{background:rgba(196,92,92,.15);color:var(--red);border:1px solid rgba(196,92,92,.3)}
+.rtxt{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1rem;white-space:pre-wrap}
+.fi{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.finum{font-family:var(--mono);font-size:10px;color:var(--text3);min-width:28px;padding-top:1px}
+.fitxt{font-size:12px;color:var(--text);line-height:1.5}
+.mrow{display:flex;gap:16px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:1rem}
+.mi{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.mi span{color:var(--text2)}
+.cbar-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.cbar-lbl{font-family:var(--mono);font-size:10px;color:var(--text3);width:70px;text-transform:uppercase;letter-spacing:.06em}
+.cbar-wrap{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.cbar{height:100%;border-radius:3px;transition:width .6s ease}
+.cbar-val{font-family:var(--mono);font-size:11px;color:var(--text2);min-width:40px;text-align:right}
+.trow{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+.trow:hover{border-color:var(--border2)}
+.tr{font-family:var(--mono);font-size:11px;color:var(--text3);min-width:24px}
+.tg{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--green);min-width:80px}
+.td{font-size:12px;color:var(--text2);flex:1;min-width:100px}
+.sbw{width:60px;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.sb{height:100%;background:var(--green);border-radius:2px}
+.bmgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
+.bmc{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px}
+.bmn{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--teal);margin-bottom:4px}
+.trc{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:14px;margin-bottom:8px}
+.trid{font-family:var(--mono);font-size:10px;color:var(--blue);margin-bottom:4px}
+.trtl{font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px;line-height:1.4}
+.hcta{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hlbl{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+.hbtn{display:inline-flex;align-items:center;background:transparent;color:var(--teal);border:1px solid rgba(69,179,162,.3);border-radius:6px;padding:7px 16px;font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s}
+.hbtn:hover{background:rgba(69,179,162,.08);border-color:var(--teal)}
+.ecard{background:rgba(196,92,92,.08);border:1px solid rgba(196,92,92,.2);border-radius:10px;padding:1.5rem;display:flex;gap:12px}
+.etitle{font-family:var(--mono);font-size:12px;color:var(--red);margin-bottom:4px}
+.emsg{font-size:12px;color:var(--text2);line-height:1.5}
+.rbtn{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:transparent;border:1px solid rgba(196,92,92,.3);color:var(--red);border-radius:5px;padding:6px 14px;font-family:var(--mono);font-size:11px;cursor:pointer}
+.rbtn:hover{background:rgba(196,92,92,.08)}
+.afbadge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--blue);background:rgba(91,155,212,.1);border:1px solid rgba(91,155,212,.25);border-radius:4px;padding:3px 10px}
+/* WELCOME */
+.welcome{max-width:640px;padding:3rem 0}
+.wtitle{font-family:var(--serif);font-weight:300;font-size:36px;color:var(--text);margin-bottom:.5rem;line-height:1.2}
+.wtitle em{color:var(--green);font-style:italic}
+.wsub{font-size:14px;color:var(--text2);margin-bottom:2rem;line-height:1.6}
+.chain-ov{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.5rem}
+.cc{flex:1;padding:14px 12px;border-right:1px solid var(--border)}
+.cc:last-child{border-right:none}
+.cc-lbl{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px}
+.cc-tools{font-family:var(--mono);font-size:10px;color:var(--green);line-height:1.6}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.5rem}
+.tc{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:border-color .15s}
+.tc:hover{border-color:var(--border2)}
+.tc-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+.tc-q{font-size:11px;color:var(--text3);font-style:italic}
+.demo{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1.25rem}
+.demo-t{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:12px}
+.dstep{display:flex;gap:10px;margin-bottom:8px;font-size:12px;color:var(--text2);line-height:1.5}
+.dsnum{font-family:var(--mono);font-size:10px;color:var(--green);min-width:20px;padding-top:1px}
+.sbtn{display:inline-flex;align-items:center;gap:8px;background:var(--green);color:#0a0e0b;border:none;border-radius:6px;padding:10px 24px;font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.05em;transition:all .15s;margin-top:1.5rem;margin-right:8px}
+.sbtn:hover{background:#5ac870;transform:translateY(-1px)}
+.sbtn.alt{background:transparent;color:var(--teal);border:1px solid rgba(69,179,162,.3)}
+.sbtn.alt:hover{background:rgba(69,179,162,.08)}
+.sbtn.alt2{background:transparent;color:var(--blue);border:1px solid rgba(91,155,212,.3)}
+.sbtn.alt2:hover{background:rgba(91,155,212,.08)}
+/* MOLPROFILE */
+.mgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.mc{background:var(--bg3);border-radius:6px;padding:12px;text-align:center;border:1px solid var(--border)}
+.mc.fail{border-color:rgba(212,168,67,.3)}
+.mc-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em}
+.mc-val{font-family:var(--mono);font-size:17px;font-weight:500;color:var(--text);margin-bottom:2px}
+.mc-unit{font-size:10px;color:var(--text3)}
+.mc-bw{height:3px;background:var(--surface2);border-radius:2px;margin-top:4px}
+.mc-b{height:100%;border-radius:2px}
+.mc-s{font-size:10px;margin-top:3px}
+/* 3D VIEWER */
+.viewer-panel{background:rgba(91,155,212,.05);border:1px solid rgba(91,155,212,.2);border-radius:8px;margin-top:12px;overflow:hidden}
+.viewer-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid rgba(91,155,212,.15);background:rgba(91,155,212,.04);flex-wrap:wrap}
+.viewer-title{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);font-weight:500}
+.viewer-id{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.viewer-ctrls{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.vctrl{font-family:var(--mono);font-size:10px;color:var(--text2);background:transparent;border:1px solid var(--border2);border-radius:4px;padding:4px 10px;cursor:pointer;transition:all .15s}
+.vctrl:hover{border-color:var(--blue);color:var(--blue)}
+.vctrl.active{border-color:var(--blue);color:var(--blue);background:rgba(91,155,212,.1)}
+.viewer-body{position:relative;width:100%;height:380px;background:#0a0e0b}
+.viewer-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-family:var(--mono);font-size:11px;color:var(--text3);z-index:2;pointer-events:none}
+.viewer-loading.hidden{display:none}
+.viewer-legend{padding:10px 14px;border-top:1px solid rgba(91,155,212,.15);display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3)}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-sq{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.viewer-hint{font-size:10px;color:var(--text3);margin-left:auto;font-style:italic}
+.show-3d-btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--blue);background:rgba(91,155,212,.08);border:1px solid rgba(91,155,212,.25);border-radius:4px;padding:5px 12px;cursor:pointer;transition:all .15s;margin-top:8px}
+.show-3d-btn:hover{background:rgba(91,155,212,.15);border-color:var(--blue)}
+.show-3d-btn:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:768px){.sidebar{display:none}.content{max-width:100%}.hdr{padding:0 1rem}.ctx-wrap{max-width:160px}.tgrid{grid-template-columns:1fr}.mgrid{grid-template-columns:repeat(3,1fr)}.viewer-body{height:300px}}
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div class="logo"><div class="logo-dot"></div><span class="logo-txt">Drug<b>IQ</b></span></div>
+  <div class="divv"></div>
+  <div class="ctx-bar">
+    <span class="ctx-lbl">Disease:</span>
+    <div class="ctx-wrap">
+      <svg class="ctx-ico" viewBox="0 0 16 16"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="14" y2="14"/></svg>
+      <input id="gDisease" class="ctx-in" type="text" placeholder="e.g. Non-small cell lung cancer">
+    </div>
+    <span id="stageBadge" class="stage-badge" style="display:none"></span>
+  </div>
+</header>
+<div class="main">
+  <nav class="sidebar">
+    <div class="ss">
+      <p class="ss-lbl">Tools</p>
+      <button class="tbtn on"  onclick="go('welcome')"><span class="tnum">⌂</span><span class="tname">Overview</span></button>
+      <button class="tbtn" id="b-scisynth"     onclick="go('scisynth')"><span class="tnum">①</span><span class="tname">SciSynth</span><span class="tdot"></span></button>
+      <button class="tbtn" id="b-targetscope"  onclick="go('targetscope')"><span class="tnum">②</span><span class="tname">TargetScope</span><span class="tdot"></span></button>
+      <button class="tbtn" id="b-bindpredict"  onclick="go('bindpredict')"><span class="tnum">③</span><span class="tname">BindPredict</span><span class="tdot"></span></button>
+      <button class="tbtn" id="b-biosignal"    onclick="go('biosignal')"><span class="tnum">④</span><span class="tname">BioSignal</span><span class="tdot"></span></button>
+      <button class="tbtn" id="b-repurposerx"  onclick="go('repurposerx')"><span class="tnum">⑤</span><span class="tname">RepurposeRx</span><span class="tdot"></span></button>
+      <button class="tbtn" id="b-trialmatch"   onclick="go('trialmatch')"><span class="tnum">⑥</span><span class="tname">TrialMatch</span><span class="tdot warn"></span></button>
+      <button class="tbtn" id="b-alphamissense" onclick="go('alphamissense')"><span class="tnum">⑦</span><span class="tname">AlphaMissense</span><span class="tdot blue"></span></button>
+      <button class="tbtn" id="b-molprofile"   onclick="go('molprofile')"><span class="tnum">⑧</span><span class="tname">MolProfile</span><span class="tdot"></span></button>
+    </div>
+    <div class="ss" style="padding-top:0">
+      <div class="guide-pill" id="gpill" onclick="toggleGuide()"><div class="gpill-dot"></div><span id="glbl">Guide Mode: Off</span></div>
+    </div>
+    <div class="ss">
+      <p class="ss-lbl">Value Chain</p>
+      <div class="chain-d">
+        <div class="cstep"><div class="cdot" id="cd-target"></div><span class="clbl" id="cl-target">Target ID</span></div>
+        <div class="carr"></div>
+        <div class="cstep"><div class="cdot" id="cd-hit"></div><span class="clbl" id="cl-hit">Hit Discovery</span></div>
+        <div class="carr"></div>
+        <div class="cstep"><div class="cdot" id="cd-lead"></div><span class="clbl" id="cl-lead">Lead Opt</span></div>
+        <div class="carr"></div>
+        <div class="cstep"><div class="cdot" id="cd-clinical"></div><span class="clbl" id="cl-clinical">Clinical Trials</span></div>
+      </div>
+    </div>
+    <div class="ss">
+      <p class="ss-lbl">DeepMind APIs</p>
+      <div style="padding:0 4px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.8">AlphaFold DB <span style="color:var(--blue)">③</span><br>AlphaMissense <span style="color:var(--blue)">⑦</span></div>
+    </div>
+  </nav>
+  <main class="content" id="content"></main>
+</div>
+<script>
+// ── TOOLS ────────────────────────────────────────────────────────────────────
+const T = {
+  scisynth:{name:'SciSynth',sub:'Scientific Literature Synthesis',
+    desc:'Enter a hypothesis or scientific claim. SciSynth searches PubMed and Semantic Scholar, weighs the evidence, and returns a verdict with confidence and key findings.',
+    plain:'Think of this as your <strong>personal research assistant</strong>. Type a medical claim — like "this drug reduces heart attacks" — and it reads thousands of papers in seconds, then tells you: does the science agree, disagree, or is it still unclear?',
+    tags:['Target ID','Hypothesis Validation'],stage:'TARGET IDENTIFICATION',chain:'target',
+    url:'https://scisynth-server.onrender.com',
+    how:['📄 Searches PubMed & Semantic Scholar','🧠 AI weighs all evidence','⚖️ Returns verdict + key findings'],
+    ex:['GLP-1 agonists reduce cardiovascular mortality','KRAS G12C drives NSCLC progression','Coffee causes cancer'],
+    fields:[{id:'hypothesis',lbl:'Hypothesis or Claim',ph:'e.g. GLP-1 agonists reduce cardiovascular mortality',req:true}]},
+  targetscope:{name:'TargetScope',sub:'Drug Target Prioritisation',
+    desc:'Enter a disease name to get a ranked list of drug targets scored by genetic association and clinical evidence from OpenTargets and PubMed.',
+    plain:'Every disease has <strong>biological weak points</strong> — proteins that, if blocked or activated, could slow or stop the disease. This tool finds and ranks those weak points.',
+    tags:['Target ID','Genetic Association'],stage:'TARGET IDENTIFICATION',chain:'target',
+    url:'https://targetscope-server.onrender.com',
+    how:['🧬 Queries OpenTargets genetic database','📚 Cross-references PubMed','🏆 Ranks targets by evidence'],
+    ex:['Systemic lupus erythematosus','Non-small cell lung cancer','Pancreatic cancer'],
+    fields:[{id:'disease',lbl:'Disease / Indication',ph:'e.g. Systemic lupus erythematosus',req:true,global:true}]},
+  bindpredict:{name:'BindPredict',sub:'Binding Affinity + AlphaFold Structure',
+    desc:'Predict binding strength between a protein target and compound. Enriched with AlphaFold DB structural confidence, UniProt annotations, and ChEMBL bioactivity data.',
+    plain:'Imagine a lock (disease protein) and a key (drug). This tool predicts <strong>how well a drug key fits a disease lock</strong> before anyone spends years in a lab. Also shows the protein\'s 3D structure from Google DeepMind\'s AlphaFold.',
+    tags:['Hit Discovery','Lead Opt','AlphaFold'],stage:'HIT DISCOVERY',chain:'hit',
+    url:'https://bindingpredictor-server.onrender.com',
+    how:['🔬 Looks up protein via UniProt + AlphaFold DB','💊 Queries ChEMBL bioactivity','🤖 AI predicts binding strength'],
+    ex:['BCR-ABL / Imatinib','KRAS / Sotorasib','EGFR / Osimertinib'],
+    fields:[{id:'target',lbl:'Protein Target',ph:'e.g. KRAS, BCR-ABL, EGFR',req:true},{id:'compound',lbl:'Small Molecule',ph:'e.g. Sotorasib, Imatinib, Caffeine',req:true},{id:'disease',lbl:'Disease Context (optional)',ph:'e.g. Non-small cell lung cancer',req:false}]},
+  biosignal:{name:'BioSignal',sub:'Biomarker Discovery & Grading',
+    desc:'Identify and grade candidate biomarkers from PubMed and DisGeNET — diagnostic, prognostic, or predictive — with evidence grading.',
+    plain:'A <strong>biomarker is a measurable signal in your body</strong> — like a protein in your blood — that tells doctors something is wrong. This tool finds the best biomarkers for any disease and grades them by evidence quality.',
+    tags:['Clinical','Patient Stratification'],stage:'CLINICAL TRIALS',chain:'clinical',
+    url:'https://biosignal-server.onrender.com',
+    how:['📖 Searches PubMed biomarker literature','🧬 Queries DisGeNET gene-disease data','🏅 Grades each biomarker by evidence'],
+    ex:['Lupus nephritis','Pancreatic cancer','Alzheimer\'s disease'],
+    fields:[{id:'disease',lbl:'Disease / Condition',ph:'e.g. Lupus nephritis',req:true,global:true},{id:'biomarker_type',lbl:'Biomarker Type',type:'select',opts:['Prognostic','Diagnostic','Predictive'],req:false}]},
+  repurposerx:{name:'RepurposeRx',sub:'Drug Repurposing Intelligence',
+    desc:'Find approved drugs from other indications that may work for your target disease. Mines OpenTargets, ChEMBL, and PubMed to score repurposing candidates.',
+    plain:'<strong>Drug repurposing is a shortcut</strong>: instead of inventing a new drug from scratch (10-15 years, $2B+), you find an existing approved drug that might work for a different disease. This tool finds those opportunities.',
+    tags:['Hit Discovery','Repurposing'],stage:'HIT DISCOVERY',chain:'hit',
+    url:'https://repurposerx-server.onrender.com',
+    how:['🔍 Scans OpenTargets for shared mechanisms','💊 Finds approved drugs with matching targets','📊 Scores candidates by repurposing potential'],
+    ex:['Amyotrophic lateral sclerosis','Multiple myeloma','Glioblastoma'],
+    fields:[{id:'disease',lbl:'Target Disease',ph:'e.g. Amyotrophic lateral sclerosis',req:true,global:true}]},
+  trialmatch:{name:'TrialMatch',sub:'Clinical Trial Matching',
+    desc:'Match a patient profile to recruiting clinical trials worldwide. Fetches live data from ClinicalTrials.gov and uses AI to score eligibility.',
+    plain:'There are <strong>thousands of clinical trials</strong> recruiting patients right now. Finding the right one used to take hours. Enter a patient profile and get a ranked list of trials they may qualify for.',
+    tags:['Clinical Trials','Patient Matching'],stage:'CLINICAL TRIALS',chain:'clinical',
+    url:'https://trialmatch-server.onrender.com',
+    how:['🌐 Queries ClinicalTrials.gov from your browser','📋 Filters by condition and eligibility','🤖 AI scores each trial for patient fit'],
+    ex:['Systemic lupus erythematosus','Non-small cell lung cancer','Amyotrophic lateral sclerosis'],
+    fields:[{id:'disease',lbl:'Disease / Condition',ph:'e.g. Systemic lupus erythematosus',req:true,global:true},{id:'age',lbl:'Patient Age',ph:'e.g. 45',req:false},{id:'gender',lbl:'Gender',type:'select',opts:['Female','Male','Other'],req:false},{id:'current_treatment',lbl:'Current Treatment',ph:'e.g. Hydroxychloroquine',req:false}]},
+  alphamissense:{name:'AlphaMissense',sub:'Variant Pathogenicity — Google DeepMind',
+    desc:'Predict whether a genetic mutation causes disease. Powered by Google DeepMind\'s AlphaMissense via Ensembl VEP, with AlphaFold structural context.',
+    plain:'Your DNA is a 3-billion-letter instruction manual. Sometimes one letter is wrong — a <strong>missense variant</strong>. Some are harmless. Others cause serious disease. Google DeepMind\'s AlphaMissense AI predicts: <em>is this one dangerous?</em>',
+    tags:['Precision Medicine','DeepMind AI','Rare Disease'],stage:'TARGET IDENTIFICATION',chain:'target',
+    url:null,
+    how:['🧬 Resolves gene + variant in Ensembl','🤖 Retrieves AlphaMissense pathogenicity score','💡 AI synthesises clinical interpretation'],
+    ex:['BRCA1 R1699W','KRAS G12C','TP53 R175H','EGFR L858R'],
+    fields:[{id:'gene',lbl:'Gene Symbol',ph:'e.g. BRCA1, KRAS, TP53',req:true},{id:'variant',lbl:'Amino Acid Change',ph:'e.g. R1699W or G12C',req:true},{id:'disease_context',lbl:'Disease Context (optional)',ph:'e.g. Hereditary breast cancer',req:false}]},
+  molprofile:{name:'MolProfile',sub:'Drug Viability & ADME Profiling',
+    desc:'Assess whether a compound is viable as a drug. Computes Lipinski Rule of Five, ADME properties from PubChem and ChEMBL — equivalent to SwissADME — with AI interpretation.',
+    plain:'Knowing a drug <em>binds</em> to a protein is only half the battle. <strong>Can it survive in the human body?</strong> Will it dissolve? Reach the bloodstream? Will the liver destroy it? This tool does a full drug viability check.',
+    tags:['Lead Opt','ADME','SwissADME-equivalent'],stage:'LEAD OPTIMISATION',chain:'lead',
+    url:null,
+    how:['🔬 Fetches molecular properties from PubChem','💊 Queries ChEMBL for clinical phase','🤖 AI interprets ADME viability'],
+    ex:['Imatinib','Sotorasib','Aspirin','Caffeine','Paclitaxel'],
+    fields:[{id:'compound',lbl:'Compound / Drug Name',ph:'e.g. Imatinib, Sotorasib, Aspirin',req:true},{id:'target_context',lbl:'Target / Context (optional)',ph:'e.g. KRAS inhibitor for NSCLC',req:false}]}
+};
+
+const CHAIN_MAP = {scisynth:'target',targetscope:'target',alphamissense:'target',bindpredict:'hit',repurposerx:'hit',molprofile:'lead',biosignal:'clinical',trialmatch:'clinical'};
+
+const HANDOFFS = {
+  scisynth:     [{lbl:'→ Investigate targets in TargetScope',to:'targetscope',fld:'disease',v:()=>document.getElementById('gDisease').value}],
+  targetscope:  [{lbl:'→ Send top target to BindPredict',to:'bindpredict',fld:'target',v:(r)=>r._topTarget||''}],
+  bindpredict:  [{lbl:'→ Profile compound in MolProfile',to:'molprofile',fld:'compound',v:(r)=>r._compound||''}],
+  repurposerx:  [{lbl:'→ Send top candidate to BindPredict',to:'bindpredict',fld:'compound',v:(r)=>r._topCandidate||''},{lbl:'→ Profile in MolProfile',to:'molprofile',fld:'compound',v:(r)=>r._topCandidate||''}],
+  alphamissense:[{lbl:'→ Investigate in BindPredict',to:'bindpredict',fld:'target',v:(r)=>r.gene||''}]
+};
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let guide = false;
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+function go(id) {
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  const b = id==='welcome' ? document.querySelector('.tbtn[onclick*="welcome"]') : document.getElementById('b-'+id);
+  if(b) b.classList.add('on');
+  ['target','hit','lead','clinical'].forEach(c=>{
+    document.getElementById('cd-'+c).classList.toggle('on', CHAIN_MAP[id]===c);
+    document.getElementById('cl-'+c).classList.toggle('on', CHAIN_MAP[id]===c);
+  });
+  const sb = document.getElementById('stageBadge');
+  if(id==='welcome'){ sb.style.display='none'; }
+  else { sb.style.display='inline-block'; sb.textContent=T[id].stage; }
+  document.getElementById('content').innerHTML = id==='welcome' ? welcomeHTML() : toolHTML(id);
+}
+
+function toggleGuide() {
+  guide = !guide;
+  document.body.classList.toggle('guide', guide);
+  const p = document.getElementById('gpill');
+  p.classList.toggle('on', guide);
+  document.getElementById('glbl').textContent = guide ? 'Guide Mode: On' : 'Guide Mode: Off';
+}
+
+// ── WELCOME ──────────────────────────────────────────────────────────────────
+function welcomeHTML() {
+  const cards = [
+    ['①','scisynth','SciSynth','Does the science support this claim?',''],
+    ['②','targetscope','TargetScope','What are the best drug targets for this disease?',''],
+    ['③','bindpredict','BindPredict','Will this drug bind to this protein?','AlphaFold'],
+    ['④','biosignal','BioSignal','What biomarkers signal this disease?',''],
+    ['⑤','repurposerx','RepurposeRx','Can an existing drug treat this disease?',''],
+    ['⑥','trialmatch','TrialMatch','Which clinical trials match this patient?',''],
+    ['⑦','alphamissense','AlphaMissense','Is this genetic mutation dangerous?','DeepMind'],
+    ['⑧','molprofile','MolProfile','Will this drug survive in the human body?','SwissADME']
+  ];
+  const cHTML = cards.map(([num,id,name,q,badge])=>`<div class="tc" onclick="go('${id}')"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${num}</span><span class="tc-name">${name}</span>${badge?`<span style="font-family:var(--mono);font-size:9px;color:var(--blue);background:rgba(91,155,212,.1);border:1px solid rgba(91,155,212,.2);border-radius:3px;padding:1px 5px">${badge}</span>`:''}</div><p class="tc-q">${q}</p></div>`).join('');
+  return `<div class="welcome">
+    <h1 class="wtitle">Research drug development.<br><em>Faster.</em></h1>
+    <p class="wsub">Eight AI-powered tools. One unified platform. Covering the full drug development value chain — from scientific literature to drug viability profiling.</p>
+    <div style="background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.2);border-radius:8px;padding:14px 16px;margin-bottom:1.5rem;display:flex;gap:12px">
+      <span style="font-size:18px;flex-shrink:0">🧭</span>
+      <div><p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:4px">New to life sciences?</p><p style="font-size:12px;color:var(--text2);line-height:1.6">Toggle <strong style="color:var(--text)">Guide Mode</strong> in the sidebar — it adds plain-English explanations to every tool. No PhD required.</p></div>
+    </div>
+    <div class="chain-ov">
+      <div class="cc"><p class="cc-lbl">Target ID</p><p class="cc-tools">SciSynth ①<br>TargetScope ②<br>AlphaMissense ⑦</p></div>
+      <div class="cc"><p class="cc-lbl">Hit Discovery</p><p class="cc-tools">BindPredict ③<br>RepurposeRx ⑤</p></div>
+      <div class="cc"><p class="cc-lbl">Lead Opt</p><p class="cc-tools">MolProfile ⑧<br>BindPredict ③</p></div>
+      <div class="cc"><p class="cc-lbl">Clinical</p><p class="cc-tools">BioSignal ④<br>TrialMatch ⑥</p></div>
+    </div>
+    <div class="tgrid">${cHTML}</div>
+    <div class="demo">
+      <p class="demo-t">Demo script — NSCLC in 12 minutes</p>
+      <div class="dstep"><span class="dsnum">01</span><span>Set disease: <code style="font-family:var(--mono);color:var(--green);font-size:11px">Non-small cell lung cancer</code></span></div>
+      <div class="dstep"><span class="dsnum">02</span><span><strong>SciSynth</strong> → "KRAS G12C drives NSCLC progression" → Supported verdict</span></div>
+      <div class="dstep"><span class="dsnum">03</span><span><strong>TargetScope</strong> → disease auto-fills → KRAS in top ranked targets</span></div>
+      <div class="dstep"><span class="dsnum">04</span><span><strong>BindPredict</strong> → KRAS + Sotorasib → Strong binding + AlphaFold 3D structure</span></div>
+      <div class="dstep"><span class="dsnum">05</span><span><strong>MolProfile</strong> → Sotorasib → ADME viability check, Lipinski, clinical phase</span></div>
+      <div class="dstep"><span class="dsnum">06</span><span><strong>AlphaMissense</strong> → KRAS G12C → Likely Pathogenic score from DeepMind</span></div>
+      <div class="dstep"><span class="dsnum">07</span><span><strong>BioSignal</strong> → biomarker panel for patient stratification</span></div>
+      <div class="dstep"><span class="dsnum">08</span><span><strong>TrialMatch</strong> → 58yo male NSCLC → matching recruiting trials</span></div>
+    </div>
+    <button class="sbtn" onclick="go('scisynth')">Start with SciSynth →</button>
+    <button class="sbtn alt" onclick="go('molprofile')">Try MolProfile ⑧ →</button>
+    <button class="sbtn alt2" onclick="go('alphamissense')">Try AlphaMissense ⑦ →</button>
+  </div>`;
+}
+
+// ── TOOL UI ──────────────────────────────────────────────────────────────────
+function toolHTML(id) {
+  const t = T[id];
+  const gd = document.getElementById('gDisease').value;
+  const fieldsHTML = t.fields.map(f=>{
+    const val = (f.global && gd) ? gd : '';
+    if(f.type==='select') return `<div class="fg"><label class="flbl">${f.lbl}</label><select class="fin" id="f-${f.id}">${f.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+    return `<div class="fg"><label class="flbl">${f.lbl}${f.req?' *':''}</label><input class="fin" id="f-${f.id}" type="text" placeholder="${f.ph||''}" value="${val}"></div>`;
+  }).join('');
+  const howHTML = `<div class="how-steps">${t.how.map((s,i)=>`<div class="hstep"><div class="hstep-n">STEP ${i+1}</div><div class="hstep-t">${s}</div></div>`).join('')}</div>`;
+  const chipsHTML = `<div class="chips"><span style="font-family:var(--mono);font-size:10px;color:var(--text3);padding-top:4px">Try:</span>${t.ex.map((e,i)=>`<span class="chip" data-id="${id}" data-i="${i}" onclick="applyEx(this)">${e}</span>`).join('')}</div>`;
+  const tagsHTML = t.tags.map(tg=>`<span class="tag">${tg}</span>`).join('');
+  return `<div style="margin-bottom:1.5rem">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+      <div><h2 class="ttl">${t.name} — <span>${t.sub}</span></h2><div>${tagsHTML}</div></div>
+      <button class="ptoggle ${guide?'on':''}" onclick="toggleGuide()">${guide?'📖 Plain English: On':'📖 Plain English'}</button>
+    </div>
+    <div class="edu-banner plain"><span class="edu-ico">💡</span><div><p class="edu-t">What does this tool do?</p><p class="edu-txt">${t.plain}</p></div></div>
+    <p class="tdesc expert">${t.desc}</p>
+    ${howHTML}
+  </div>
+  <div class="fcard">
+    <div class="frow">${fieldsHTML}</div>
+    ${chipsHTML}
+    <div style="margin-top:1rem"><button class="runbtn" id="runbtn" onclick="run('${id}')"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,1 11,6 2,11" fill="#0a0e0b"/></svg>Run ${t.name}</button></div>
+  </div>
+  <div id="out"></div>`;
+}
+
+function applyEx(chip) {
+  const id = chip.dataset.id, i = parseInt(chip.dataset.i);
+  const ex = T[id].ex[i];
+  if(id==='bindpredict' && ex.includes('/')) {
+    const p = ex.split('/').map(s=>s.trim());
+    const tf=document.getElementById('f-target'), cf=document.getElementById('f-compound');
+    if(tf) tf.value=p[0]; if(cf) cf.value=p[1]||'';
+    return;
+  }
+  if(id==='alphamissense' && ex.includes(' ')) {
+    const p=ex.split(' ');
+    const gf=document.getElementById('f-gene'), vf=document.getElementById('f-variant');
+    if(gf) gf.value=p[0]; if(vf) vf.value=p.slice(1).join(' ');
+    return;
+  }
+  const fst = T[id].fields.find(f=>f.req);
+  if(fst){ const el=document.getElementById('f-'+fst.id); if(el) el.value=ex; }
+}
+
+// ── LOADING ──────────────────────────────────────────────────────────────────
+const STEPS={
+  scisynth:['Querying PubMed database','Fetching Semantic Scholar results','Synthesising evidence with AI','Generating verdict'],
+  targetscope:['Querying OpenTargets API','Fetching genetic association scores','Cross-referencing PubMed','Ranking targets by evidence'],
+  bindpredict:['Looking up protein in UniProt','Fetching AlphaFold structure data','Querying ChEMBL bioactivity','Predicting binding affinity'],
+  biosignal:['Querying PubMed for biomarkers','Fetching DisGeNET associations','Grading evidence quality','Compiling biomarker panel'],
+  repurposerx:['Scanning OpenTargets for mechanisms','Querying approved drug database','Searching PubMed evidence','Scoring repurposing candidates'],
+  trialmatch:['Querying ClinicalTrials.gov live','Filtering by eligibility criteria','Scoring trial matches with AI','Ranking results'],
+  alphamissense:['Resolving gene in Ensembl','Running Ensembl VEP annotation','Retrieving AlphaFold structure','Synthesising clinical interpretation'],
+  molprofile:['Looking up compound in PubChem','Fetching ChEMBL bioactivity data','Computing ADME properties','Generating drug viability report']
+};
+
+function loadHTML(id){
+  return `<div class="lcard"><div class="spinner"></div><p style="font-family:var(--mono);font-size:12px;color:var(--text3)">Analysing...</p><div class="lsteps">${STEPS[id].map((s,i)=>`<div class="lstep" id="ls-${i}"><div class="sdot ${i===0?'active':''}"></div><span>${s}</span></div>`).join('')}</div></div>`;
+}
+
+async function animSteps(id){
+  for(let i=0;i<STEPS[id].length-1;i++){
+    await new Promise(r=>setTimeout(r,600+Math.random()*400));
+    const c=document.getElementById('ls-'+i), n=document.getElementById('ls-'+(i+1));
+    if(!c) break;
+    c.querySelector('.sdot').className='sdot done'; c.classList.add('done');
+    if(n){n.querySelector('.sdot').className='sdot active';n.classList.add('active');}
+  }
+}
+
+// ── RUN ──────────────────────────────────────────────────────────────────────
+async function run(id){
+  const t=T[id], btn=document.getElementById('runbtn'), out=document.getElementById('out');
+  const p={}; let ok=true;
+  t.fields.forEach(f=>{const el=document.getElementById('f-'+f.id);p[f.id]=el?el.value.trim():'';if(f.req&&!p[f.id])ok=false;});
+  if(!ok){out.innerHTML=eHTML('Please fill in all required fields.',true);return;}
+  if(p.disease) document.getElementById('gDisease').value=p.disease;
+  btn.disabled=true; out.innerHTML=loadHTML(id);
+  try{const [res]=await Promise.all([callTool(id,p),animSteps(id)]);out.innerHTML=render(id,res,p);}
+  catch(e){out.innerHTML=eHTML(e.message||'Unknown error');}
+  btn.disabled=false;
+}
+
+// ── API HELPERS ───────────────────────────────────────────────────────────────
+async function ag(url,params){
+  const qs=params?'?'+new URLSearchParams(params):'';
+  const r=await fetch(url+qs);
+  if(!r.ok){if(r.status===429)throw new Error('rate_limit');if(r.status===403)throw new Error('blocked_403');throw new Error('API error '+r.status);}
+  return r.json();
+}
+async function ap(url,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!r.ok){if(r.status===429)throw new Error('rate_limit');if(r.status===403)throw new Error('blocked_403');const t=await r.text();throw new Error('API error '+r.status+': '+t.slice(0,100));}
+  return r.json();
+}
+
+// ── CALL TOOL ─────────────────────────────────────────────────────────────────
+async function callTool(id,p){
+  const base=T[id].url;
+
+  if(id==='scisynth'){
+    const s=await ag(base+'/search',{query:p.hypothesis,max_results:15});
+    const papers=s.papers||[];
+    if(!papers.length)return{verdict:'Insufficient Evidence',confidence:'Low',summary:'No papers found. Try rephrasing your hypothesis.',keyFindings:[]};
+    return ap(base+'/synthesize',{hypothesis:p.hypothesis,papers});
+  }
+
+  if(id==='targetscope'){
+    const[ot,pm]=await Promise.all([ag(base+'/opentargets',{disease:p.disease}),ag(base+'/pubmed-targets',{disease:p.disease})]);
+    const targets=ot.targets||[], papers=Array.isArray(pm)?pm:(pm.papers||[]);
+    const res=await ap(base+'/analyze',{disease:p.disease,targets,papers,context:''});
+    return{...res,_topTarget:(res.top_targets&&res.top_targets[0]?.symbol)||''};
+  }
+
+  if(id==='bindpredict'){
+    const[protein,ligand]=await Promise.all([ag(base+'/protein-info',{name:p.target}),ag(base+'/ligand-info',{name:p.compound})]);
+    let af=null;
+    if(protein.uniprot_id){try{const r=await fetch('https://alphafold.ebi.ac.uk/api/prediction/'+protein.uniprot_id);if(r.ok){const d=await r.json();if(d&&d[0])af={uniprot_id:d[0].uniprotAccession,pdbUrl:d[0].pdbUrl,plddt:d[0].plddt,entryId:d[0].entryId};}}catch(_){}}
+    const res=await ap(base+'/predict',{protein,ligand,context:p.disease||''});
+    return{...res,alphafold:af,_compound:p.compound};
+  }
+
+  if(id==='biosignal'){
+    const bt=p.biomarker_type||'Prognostic';
+    const[pm,dg]=await Promise.all([ag(base+'/pubmed-biomarkers',{disease:p.disease,biomarker_type:bt.toLowerCase()}),ag(base+'/disgenet',{disease:p.disease})]);
+    return ap(base+'/analyze',{disease:p.disease,biomarker_type:bt,papers:Array.isArray(pm)?pm:[],genes:Array.isArray(dg)?dg:[],patient_context:''});
+  }
+
+  if(id==='repurposerx'){
+    const[ot,pm]=await Promise.all([ag(base+'/opentargets-drugs',{disease:p.disease}),ag(base+'/pubmed-repurpose',{disease:p.disease})]);
+    const res=await ap(base+'/analyze',{disease:p.disease,known_drugs:ot.known_drugs||[],targets:ot.targets||[],papers:Array.isArray(pm)?pm:[],priority:'efficacy'});
+    return{...res,_topCandidate:(res.repurposing_candidates&&res.repurposing_candidates[0]?.drug_name)||''};
+  }
+
+  if(id==='trialmatch'){
+    const cp=new URLSearchParams({'query.cond':p.disease,'filter.overallStatus':'RECRUITING','pageSize':'20','format':'json'});
+    if(p.gender&&p.gender!=='Other')cp.set('filter.sex',p.gender.toUpperCase());
+    let trials=[];
+    try{
+      const r=await fetch('https://clinicaltrials.gov/api/v2/studies?'+cp,{headers:{Accept:'application/json'}});
+      if(r.ok){const d=await r.json();for(const s of(d.studies||[])){try{const pm2=s.protocolSection||{},id2=pm2.identificationModule||{},dm=pm2.descriptionModule||{},em=pm2.eligibilityModule||{},dsm=pm2.designModule||{},sm=pm2.sponsorCollaboratorsModule||{},cm=pm2.conditionsModule||{},im=pm2.armsInterventionsModule||{},lm=pm2.contactsLocationsModule||{};trials.push({nct_id:id2.nctId||'',title:id2.briefTitle||'No title',summary:(dm.briefSummary||'').slice(0,400),eligibility:(em.eligibilityCriteria||'').slice(0,600),min_age:em.minimumAge||'',max_age:em.maximumAge||'',sex:em.sex||'ALL',phase:(dsm.phases||[]).join(', ')||'N/A',sponsor:(sm.leadSponsor||{}).name||'',conditions:(cm.conditions||[]).slice(0,3),interventions:(im.interventions||[]).slice(0,3).map(iv=>iv.name).filter(Boolean),locations:(lm.locations||[]).slice(0,3).map(l=>[l.city,l.country].filter(Boolean).join(', '))});}catch(_){}}}
+    }catch(_){
+      try{const r=await fetch('https://clinicaltrialsapi.cancer.gov/api/v2/trials?diseases.name='+encodeURIComponent(p.disease)+'&current_trial_status=Active&size=15',{headers:{accept:'application/json'}});if(r.ok){const d=await r.json();for(const t of(d.data||[])){const el=t.eligibility||{},st=el.structured||{},un=el.unstructured||[];trials.push({nct_id:t.nct_id||'',title:t.brief_title||'No title',summary:(t.brief_summary||'').slice(0,400),eligibility:un.map(u=>u.description||'').join(' ').slice(0,600),min_age:String(st.min_age_in_years||''),max_age:String(st.max_age_in_years||''),sex:st.gender||'ALL',phase:(t.phase||{}).phase||'N/A',sponsor:t.lead_org||'',conditions:(t.diseases||[]).slice(0,3).map(d2=>d2.name||''),interventions:(t.arms||[]).slice(0,3).map(a=>((a.interventions||[])[0]||{}).intervention_name||'').filter(Boolean),locations:(t.sites||[]).slice(0,3).map(s=>[s.org_city,s.org_country].filter(Boolean).join(', '))});}}}catch(_){}
+    }
+    if(!trials.length)return{_noTrials:true,_disease:p.disease};
+    return ap(base+'/match',{patient:{condition:p.disease,age:p.age||'',gender:p.gender||'',current_treatment:p.current_treatment||''},trials});
+  }
+
+  if(id==='alphamissense'){
+    const gene=p.gene.trim().toUpperCase(), variant=p.variant.trim().replace(/\s+/g,'');
+    const AA={A:'Ala',C:'Cys',D:'Asp',E:'Glu',F:'Phe',G:'Gly',H:'His',I:'Ile',K:'Lys',L:'Leu',M:'Met',N:'Asn',P:'Pro',Q:'Gln',R:'Arg',S:'Ser',T:'Thr',V:'Val',W:'Trp',Y:'Tyr'};
+    const vm=variant.match(/^([A-Z])(\d+)([A-Z])$/i);
+    const hgvsP=vm?(AA[vm[1].toUpperCase()]||vm[1])+vm[2]+(AA[vm[3].toUpperCase()]||vm[3]):null;
+    let ensGene=null,amScore=null,amClass=null,vepData=null,uniprotId=null,af=null;
+    try{const r=await fetch('https://rest.ensembl.org/lookup/symbol/homo_sapiens/'+gene+'?content-type=application/json');if(r.ok)ensGene=await r.json();}catch(_){}
+    if(ensGene&&hgvsP){try{const r=await fetch('https://rest.ensembl.org/vep/human/hgvs/'+gene+':p.'+hgvsP+'?content-type=application/json&AlphaMissense=1&protein=1&canonical=1');if(r.ok){const a=await r.json();vepData=a[0]||null;if(vepData){for(const tc of(vepData.transcript_consequences||[])){if(tc.alphamissense_score!==undefined){amScore=tc.alphamissense_score;amClass=tc.alphamissense_pathogenicity||null;break;}}}}}catch(_){}}
+    if(ensGene){try{const r=await fetch('https://rest.ensembl.org/xrefs/id/'+ensGene.id+'?content-type=application/json&external_db=Uniprot/SWISSPROT');if(r.ok){const d=await r.json();if(d&&d[0])uniprotId=d[0].primary_id;}}catch(_){}}
+    if(uniprotId){try{const r=await fetch('https://alphafold.ebi.ac.uk/api/prediction/'+uniprotId);if(r.ok){const d=await r.json();if(d&&d[0])af={uniprot_id:d[0].uniprotAccession,pdbUrl:d[0].pdbUrl,plddt:d[0].plddt,entryId:d[0].entryId};}}catch(_){}}
+    let synthesis=null;
+    try{const hyp='The '+gene+' '+variant+' missense variant is pathogenic and causes disease';const paper={title:'AlphaMissense analysis of '+gene+' '+variant,authors:'DeepMind/EMBL-EBI',year:'2024',journal:'Computational Analysis',abstract:'Gene: '+gene+'. Variant: '+variant+(hgvsP?' (p.'+hgvsP+')':'')+'. AM score: '+(amScore!==null?amScore:'not retrieved')+'. Classification: '+(amClass||'not retrieved')+'. Context: '+(p.disease_context||'general')+'.'};synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{hypothesis:hyp,papers:[paper]});}catch(_){}
+    return{gene,variant,hgvsP,amScore,amClass,vepData,alphafold:af,ensGene,synthesis,disease_context:p.disease_context};
+  }
+
+  if(id==='molprofile'){
+    const compound=p.compound.trim();
+    let cid=null,pubchem=null,chembl=null;
+    try{const r=await fetch('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/'+encodeURIComponent(compound)+'/cids/JSON');if(r.ok){const d=await r.json();cid=(d.IdentifierList?.CID||[])[0]||null;}if(cid){const r2=await fetch('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/'+cid+'/property/MolecularFormula,MolecularWeight,XLogP,HBondDonorCount,HBondAcceptorCount,RotatableBondCount,TPSA,IUPACName/JSON');if(r2.ok){const d=await r2.json();pubchem=d.PropertyTable?.Properties?.[0]||null;}}}catch(_){}
+    try{const r=await fetch('https://www.ebi.ac.uk/chembl/api/data/molecule/search?q='+encodeURIComponent(compound)+'&format=json&limit=1');if(r.ok){const d=await r.json();const mol=(d.molecules||[])[0]||null;if(mol){const mp=mol.molecule_properties||{};chembl={chembl_id:mol.molecule_chembl_id||'',max_phase:mol.max_phase??'',indication:mol.indication_class||'',drug_type:mol.molecule_type||'',oral:mol.oral??null,alogp:mp.alogp||'',mw:mp.full_mwt||'',psa:mp.psa||'',rtb:mp.rtb||'',hba:mp.hba||'',hbd:mp.hbd||''};}}}catch(_){}
+    const mw=parseFloat(pubchem?.MolecularWeight||chembl?.mw||0),logp=parseFloat(pubchem?.XLogP||chembl?.alogp||0),hbd=parseInt(pubchem?.HBondDonorCount||chembl?.hbd||0),hba=parseInt(pubchem?.HBondAcceptorCount||chembl?.hba||0),rotb=parseInt(pubchem?.RotatableBondCount||chembl?.rtb||0),tpsa=parseFloat(pubchem?.TPSA||chembl?.psa||0);
+    const viol=[mw>500?'MW '+mw.toFixed(0)+' > 500':null,logp>5?'LogP '+logp.toFixed(2)+' > 5':null,hbd>5?'HBD '+hbd+' > 5':null,hba>10?'HBA '+hba+' > 10':null].filter(Boolean);
+    const lipinski={passes:viol.length===0,violations:viol};
+    const veber={passes:tpsa<=140&&rotb<=10};
+    const bbb=tpsa<90&&logp>0&&logp<5&&mw<450;
+    let synthesis=null;
+    try{const hyp=compound+' is a viable oral drug candidate with acceptable ADME properties';const paper={title:'ADME profile: '+compound,authors:'PubChem/NIH, ChEMBL/EMBL-EBI',year:'2024',journal:'Computational Chemistry',abstract:'Compound: '+compound+'. MW: '+mw.toFixed(1)+'. LogP: '+logp.toFixed(2)+'. HBD: '+hbd+'. HBA: '+hba+'. RotB: '+rotb+'. TPSA: '+tpsa.toFixed(1)+'. Lipinski: '+(lipinski.passes?'PASSES':'FAILS: '+viol.join(', '))+'. Veber: '+(veber.passes?'PASSES':'FAILS')+'. BBB: '+(bbb?'Possible':'Unlikely')+'. ChEMBL phase: '+(chembl?.max_phase??'unknown')+'. Context: '+(p.target_context||'general')+'.'};synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{hypothesis:hyp,papers:[paper]});}catch(_){}
+    return{compound,cid,pubchem,chembl,mw,logp,hbd,hba,rotb,tpsa,lipinski,veber,bbb_likely:bbb,synthesis,_compound:compound};
+  }
+
+  throw new Error('Unknown tool: '+id);
+}
+
+// ── RENDERERS ─────────────────────────────────────────────────────────────────
+function render(id,data,p){
+  const map={scisynth:rSci,targetscope:rTarget,bindpredict:rBind,biosignal:rBio,repurposerx:rRepurpose,trialmatch:rTrial,alphamissense:rAM,molprofile:rMol};
+  return(map[id]||(()=>`<div class="rcard"><pre>${JSON.stringify(data,null,2)}</pre></div>`))(data,p);
+}
+
+function hcta(id,data){
+  const hs=HANDOFFS[id];if(!hs||!hs.length)return'';
+  const btns=hs.map(h=>{const v=h.v(data);return `<button class="hbtn" onclick="doHandoff('${h.to}','${h.fld}','${v.replace(/'/g,'&#39;')}')">${h.lbl}</button>`;}).join('');
+  return `<div class="hcta"><span class="hlbl">Next step:</span>${btns}</div>`;
+}
+function doHandoff(toId,fld,val){go(toId);setTimeout(()=>{const el=document.getElementById('f-'+fld);if(el){el.value=val;el.style.borderColor='var(--teal)';}},150);}
+
+function vc(v){const s=(v||'').toLowerCase();if(s.includes('support')||s.includes('strong')||s.includes('benign')||s.includes('pass')||s.includes('drug-like')||s.includes('approved')||s.includes('found'))return'ok';if(s.includes('contra')||s.includes('pathogenic')||s.includes('poor')||s.includes('fail')||s.includes('bad'))return'bad';return'warn';}
+function cc(pct){return pct>=70?'var(--green)':pct>=40?'var(--amber)':'var(--red)';}
+
+function rSci(d){
+  if(d.error)return eHTML(d.error);
+  const v=d.verdict||'Unknown',c=d.confidence||'Medium',sum=d.summary||'',finds=d.keyFindings||d.key_findings||[],con=d.consensus||'',gaps=d.gaps||'';
+  const pct=c==='High'?88:c==='Medium'?55:28;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">SciSynth — Evidence Synthesis</span><span class="badge ${vc(v)}">${v}</span></div><div class="mrow"><span class="mi">Confidence: <span>${c}</span></span></div><div class="cbar-row"><span class="cbar-lbl">Confidence</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${cc(pct)}"></div></div><span class="cbar-val">${c}</span></div>${sum?`<p class="rtxt">${sum}</p>`:''}${finds.length?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Findings</p>${finds.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}`:''}${con?`<div class="fi" style="margin-top:8px;border-color:rgba(74,180,100,.2)"><span class="finum" style="color:var(--green)">CON</span><span class="fitxt">${con}</span></div>`:''}${gaps?`<div class="fi" style="margin-top:4px;border-color:rgba(212,168,67,.2)"><span class="finum" style="color:var(--amber)">GAP</span><span class="fitxt">${gaps}</span></div>`:''}${hcta('scisynth',d)}</div>`;
+}
+
+function rTarget(d,p){
+  if(d.error)return eHTML(d.error);
+  const ts=d.top_targets||[],sum=d.disease_biology_summary||d.target_landscape||'',pws=d.key_pathways||[];
+  if(!ts.length)return eHTML('No targets returned. Try canonical disease name (e.g. "systemic lupus erythematosus").', true);
+  const trows=ts.slice(0,10).map((t,i)=>{const g=t.symbol||t.name||'?',rat=t.rationale||t.pathway||'',pri=t.priority||'',pc=pri==='High'?'var(--green)':pri==='Medium'?'var(--amber)':'var(--text3)';return`<div class="trow"><span class="tr">${String(i+1).padStart(2,'0')}</span><span class="tg">${g}</span><span class="td">${rat}</span><span style="font-family:var(--mono);font-size:10px;color:${pc};padding:2px 6px;background:rgba(255,255,255,.04);border-radius:3px">${pri}</span></div>`;}).join('');
+  const pwHTML=pws.length?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${pws.map(pw=>`<span class="tag" style="color:var(--blue)">${pw}</span>`).join('')}</div>`:'';
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">TargetScope — Ranked Drug Targets</span><span class="badge ok">${ts.length} Targets Found</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${trows}${pwHTML}${hcta('targetscope',d)}</div>`;
+}
+
+function rBind(d,p){
+  if(d.error)return eHTML(d.error);
+  const aff=d.binding_affinity||'Unknown',cr=d.confidence||0,pct=typeof cr==='number'?cr:(cr==='High'?88:55),mech=d.mechanism||'',ints=d.key_interactions||[],dg=d.druggability||'',dgr=d.druggability_reason||'',bnd=d.similar_known_binders||[],clin=d.clinical_relevance||'',lim=d.limitations||'',af=d.alphafold||null;
+  const avc=aff==='Strong'?'ok':aff==='Unlikely'||aff==='Weak'?'bad':'warn';
+  const intHTML=ints.map((x,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${x}</span></div>`).join('');
+  const afHTML=af?`<div style="background:rgba(91,155,212,.07);border:1px solid rgba(91,155,212,.2);border-radius:6px;padding:12px;margin-top:12px" id="af-bp-panel"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="afbadge">🧬 AlphaFold DB</span><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${af.uniprot_id||''}</span></div><div class="plain" style="font-size:12px;color:var(--text2);margin-bottom:8px">Google DeepMind predicted this protein's 3D shape. pLDDT is the confidence score — higher is better.</div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${af.plddt?`<div><div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:2px">pLDDT</div><div style="font-family:var(--mono);font-size:16px;color:var(--blue);font-weight:500">${typeof af.plddt==='number'?af.plddt.toFixed(1):af.plddt}</div><div style="font-size:10px;color:var(--text3)">${af.plddt>=90?'Very high':af.plddt>=70?'Confident':'Low'}</div></div>`:''} <button class="show-3d-btn" onclick="show3DViewer('bp','${af.uniprot_id||''}','${af.pdbUrl||''}','${p.target||''}')">🧬 View 3D Structure</button> ${af.entryId?`<a href="https://alphafold.ebi.ac.uk/entry/${af.uniprot_id}" target="_blank" style="font-family:var(--mono);font-size:10px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:5px 10px;border-radius:4px">AlphaFold DB ↗</a>`:''}</div><div id="viewer-bp-container"></div></div>`:'';
+  const ins=`<div class="insight plain"><strong>What does this mean?</strong> A "${aff}" binding affinity means ${aff==='Strong'?'the drug fits the protein very well — a promising candidate.':aff==='Moderate'?'some interaction exists — may need optimisation.':'the drug is unlikely to work on this protein.'} Confidence: ${pct}%.</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">BindPredict — Binding Prediction</span><span class="badge ${avc}">${aff}</span></div><div class="mrow"><span class="mi">Target: <span>${p.target}</span></span><span class="mi">Compound: <span>${p.compound}</span></span><span class="mi">Sources: <span>UniProt · ChEMBL · AlphaFold</span></span></div>${ins}<div class="cbar-row"><span class="cbar-lbl">Confidence</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${cc(pct)}"></div></div><span class="cbar-val">${pct}%</span></div>${mech?`<p class="rtxt">${mech}</p>`:''}${intHTML?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Interactions</p>${intHTML}`:''}${dg?`<div class="fi" style="margin-top:8px;border-color:rgba(74,180,100,.2)"><span class="finum" style="color:var(--green)">DRUGG</span><span class="fitxt"><strong style="color:var(--green)">${dg}</strong> — ${dgr}</span></div>`:''}${clin?`<div class="fi" style="margin-top:4px"><span class="finum">CLIN</span><span class="fitxt">${clin}</span></div>`:''}${bnd.length?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Similar binders:</span>${bnd.map(b=>`<span class="tag">${b}</span>`).join('')}</div>`:''}${afHTML}${lim?`<p style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">${lim}</p>`:''}${hcta('bindpredict',d)}</div>`;
+}
+
+function rBio(d,p){
+  if(d.error)return eHTML(d.error);
+  const bms=d.biomarkers||[],sum=d.disease_summary||'',panel=d.best_panel||null,eg=d.evidence_grade||'',ch=d.clinical_challenges||'';
+  if(!bms.length)return eHTML('No biomarkers returned. Try a more specific disease name.',true);
+  const bmH=bms.map(b=>{const val=b.clinical_value||'Medium',vc2=val==='High'?'var(--green)':val==='Medium'?'var(--amber)':'var(--text3)',st=b.current_status||'',sc=st==='Validated'?'ok':st==='Emerging'?'warn':'bad';return`<div class="bmc"><p class="bmn">${b.name||'?'}</p><p style="font-size:11px;color:var(--text2);margin-bottom:6px">${b.type||''} · ${b.role||''}</p><span class="badge ${sc}" style="font-size:10px;padding:2px 8px">${st}</span><span style="font-family:var(--mono);font-size:10px;color:${vc2};margin-left:6px">Value: ${val}</span><p style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">${b.rationale||''}</p>${b.specimen?`<p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px">Specimen: ${b.specimen} · Assay: ${b.assay_type||'N/A'}</p>`:''}</div>`;}).join('');
+  const panH=panel?`<div style="margin-top:1rem;background:var(--bg3);border:1px solid rgba(74,180,100,.2);border-radius:6px;padding:12px"><p style="font-family:var(--mono);font-size:10px;color:var(--green);margin-bottom:6px">SUGGESTED PANEL: ${panel.name||''}</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${(panel.components||[]).map(c=>`<span class="tag">${c}</span>`).join('')}</div><p style="font-size:11px;color:var(--text2)">${panel.rationale||''}</p></div>`:'';
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">BioSignal — Biomarker Panel</span><span class="badge ok">${bms.length} Candidates${eg?' · Grade '+eg:''}</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Type: <span>${p.biomarker_type}</span></span><span class="mi">Sources: <span>PubMed · DisGeNET</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}<div class="bmgrid">${bmH}</div>${panH}${ch?`<p style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">${ch}</p>`:''}</div>`;
+}
+
+function rRepurpose(d,p){
+  if(d.error)return eHTML(d.error);
+  const cs=d.repurposing_candidates||[],sum=d.disease_mechanism_summary||'',best=d.best_opportunity||'',adv=d.time_cost_advantage||'';
+  if(!cs.length)return eHTML('No repurposing candidates found. Try a different disease name.',true);
+  const cH=cs.slice(0,8).map((c,i)=>{const sc=parseInt(c.repurposing_score||0),pct=Math.min(100,sc),ec=c.evidence_strength==='Strong'?'var(--green)':c.evidence_strength==='Moderate'?'var(--amber)':'var(--text3)';return`<div class="trow" style="align-items:flex-start;padding:12px 14px"><span class="tr" style="padding-top:2px">${String(i+1).padStart(2,'0')}</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="tg" style="color:var(--teal)">${c.drug_name||'?'}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${c.drug_class||''}</span></div><p style="font-size:11px;color:var(--text3);margin-bottom:3px">Currently: ${c.current_indication||''}</p><p style="font-size:12px;color:var(--text2);line-height:1.5">${c.repurposing_rationale||''}</p>${c.development_stage?`<p style="font-family:var(--mono);font-size:10px;color:var(--blue);margin-top:3px">${c.development_stage}</p>`:''}</div><div style="text-align:right;min-width:70px"><div class="sbw" style="width:70px;margin-left:auto;margin-bottom:3px"><div class="sb" style="width:${pct}%;background:var(--teal)"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${sc}</span><br><span style="font-family:var(--mono);font-size:9px;color:${ec}">${c.evidence_strength||''}</span></div></div>`;}).join('');
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">RepurposeRx — Repurposing Candidates</span><span class="badge ok">${cs.length} Candidates</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · ChEMBL · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${cH}${best?`<div class="fi" style="margin-top:10px;border-color:rgba(69,179,162,.2)"><span class="finum" style="color:var(--teal)">BEST</span><span class="fitxt">${best}</span></div>`:''}${adv?`<div class="fi" style="margin-top:4px"><span class="finum">TIME</span><span class="fitxt">${adv}</span></div>`:''}${hcta('repurposerx',d)}</div>`;
+}
+
+function rTrial(d,p){
+  if(d._noTrials)return eHTML('No recruiting trials found for "'+d._disease+'". Use a canonical disease name (e.g. "systemic lupus erythematosus").',true);
+  if(d.error)return eHTML(d.error);
+  const ms=d.matches||[];
+  if(!ms.length)return eHTML('No trial matches. Try broadening the patient profile.',true);
+  const tH=ms.map(m=>{const tr=m.trial||{},mc=m.match==='Strong Match'?'var(--green)':m.match==='Possible Match'?'var(--amber)':'var(--text3)';return`<div class="trc"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><p class="trid">${m.nct_id||tr.nct_id||''}</p><span style="font-family:var(--mono);font-size:11px;color:${mc}">${m.match||''} · ${m.score||0}</span></div><p class="trtl">${tr.title||'Unknown Trial'}</p><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-family:var(--mono);font-size:10px;color:var(--text3)">${tr.phase?`<span>Phase: <span style="color:var(--text2)">${tr.phase}</span></span>`:''} ${tr.sponsor?`<span>Sponsor: <span style="color:var(--text2)">${tr.sponsor}</span></span>`:''} ${(tr.locations||[]).length?`<span>Sites: <span style="color:var(--text2)">${tr.locations.slice(0,2).join(' · ')}</span></span>`:''}</div>${m.recommendation?`<p style="font-size:12px;color:var(--text2);margin-bottom:6px">${m.recommendation}</p>`:''} ${(m.reasons||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px">${m.reasons.map(r=>`<span style="font-size:11px;color:var(--green);background:rgba(74,180,100,.08);padding:2px 8px;border-radius:3px">+ ${r}</span>`).join('')}</div>`:''} ${(m.concerns||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${m.concerns.map(c=>`<span style="font-size:11px;color:var(--amber);background:rgba(212,168,67,.08);padding:2px 8px;border-radius:3px">⚠ ${c}</span>`).join('')}</div>`:''}</div>`;}).join('');
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">TrialMatch — Clinical Trial Matches</span><span class="badge ok">${ms.length} Matches</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span>${p.age?`<span class="mi">Age: <span>${p.age}</span></span>`:''} ${p.gender?`<span class="mi">Gender: <span>${p.gender}</span></span>`:''}</div>${tH}</div>`;
+}
+
+function rAM(d){
+  if(d.error)return eHTML(d.error);
+  const{gene,variant,hgvsP,amScore,amClass,alphafold:af,synthesis,ensGene,disease_context}=d;
+  const score=amScore!==null?parseFloat(amScore):null,pct=score!==null?Math.round(score*100):0;
+  let lbl='Score Unavailable',avc='warn',pe='',bc='var(--amber)';
+  if(score!==null){if(score>=0.564){lbl='Likely Pathogenic';avc='bad';bc='var(--red)';pe=`This mutation scores <strong>${pct}%</strong> — classified as <strong>likely pathogenic</strong>. The AI predicts this genetic change is probably harmful.`;}else if(score>=0.34){lbl='Ambiguous';avc='warn';bc='var(--amber)';pe=`This mutation scores <strong>${pct}%</strong> — in the <strong>ambiguous zone</strong>. Cannot confidently say harmful or harmless.`;}else{lbl='Likely Benign';avc='ok';bc='var(--green)';pe=`This mutation scores <strong>${pct}%</strong> — classified as <strong>likely benign</strong>. Probably harmless.`;}}
+  else{pe='Score not retrieved for this variant. Try format: <code style="font-family:var(--mono);font-size:11px;color:var(--green)">R175H</code>';}
+  const afH=af?`<div style="background:rgba(91,155,212,.07);border:1px solid rgba(91,155,212,.2);border-radius:6px;padding:12px;margin-bottom:12px" id="af-am-panel"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="afbadge">🧬 AlphaFold Structure</span><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${af.uniprot_id}</span></div><div class="plain" style="font-size:12px;color:var(--text2);margin-bottom:8px">Google DeepMind predicted the 3D shape of ${gene}. Click below to see exactly where this mutation sits in the protein structure.</div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="show-3d-btn" onclick="show3DViewer('am','${af.uniprot_id}','${af.pdbUrl||''}','${gene}',${hgvsP?parseInt(variant.match(/\\d+/)?.[0]||0):0})">🧬 View 3D Structure${hgvsP?' + Mutation':''}</button><a href="https://alphafold.ebi.ac.uk/entry/${af.uniprot_id}" target="_blank" style="font-family:var(--mono);font-size:10px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:5px 10px;border-radius:4px">AlphaFold DB ↗</a></div><div id="viewer-am-container"></div></div>`:'';
+  const sy=synthesis||{},ss=sy.summary||'',sf=sy.keyFindings||[];
+  const fH=sf.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('');
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">AlphaMissense — Variant Pathogenicity</span><span class="badge ${avc}">${lbl}</span></div><div class="mrow"><span class="mi">Gene: <span>${gene}</span></span><span class="mi">Variant: <span>${variant}${hgvsP?' (p.'+hgvsP+')':''}</span></span>${disease_context?`<span class="mi">Context: <span>${disease_context}</span></span>`:''}<span class="mi">Sources: <span>Ensembl VEP · AlphaMissense · AlphaFold</span></span></div><div class="insight plain">${pe}</div>${score!==null?`<div style="margin-bottom:16px"><div class="cbar-row"><span class="cbar-lbl">AM Score</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${bc}"></div></div><span class="cbar-val">${score.toFixed(3)}</span></div><div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text3);padding:0 0 0 75px;margin-top:2px"><span style="color:var(--green)">Benign &lt;0.34</span><span style="color:var(--amber)">Ambiguous 0.34–0.56</span><span style="color:var(--red)">Pathogenic &gt;0.56</span></div></div>`:`<div class="fi" style="margin-bottom:12px;border-color:rgba(212,168,67,.2)"><span class="finum" style="color:var(--amber)">INFO</span><span class="fitxt">Score not retrieved. Try: <code style="font-family:var(--mono);font-size:11px;color:var(--green)">R175H</code></span></div>`}${ensGene?.description?`<div class="fi" style="margin-bottom:12px"><span class="finum">GENE</span><span class="fitxt">${ensGene.description}</span></div>`:''}${afH}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Clinical Interpretation</p><p class="rtxt">${ss}</p>`:''}${fH?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Points</p>${fH}`:''}${hcta('alphamissense',d)}</div>`;
+}
+
+function rMol(d,p){
+  if(d.error)return eHTML(d.error);
+  const{compound,cid,mw,logp,hbd,hba,rotb,tpsa,lipinski,veber,bbb_likely:bbb,chembl,synthesis}=d;
+  if(!cid&&!chembl)return eHTML('Compound "'+compound+'" not found. Try the full generic name (e.g. "imatinib" not "Gleevec").',true);
+  const mp=chembl?.max_phase??'',pl=mp===4?'Approved':mp===3?'Phase III':mp===2?'Phase II':mp===1?'Phase I':mp===0?'Preclinical':'',pc=mp===4?'var(--green)':mp>=2?'var(--amber)':'var(--text3)';
+  const ol=lipinski.passes&&veber.passes?'Drug-like':lipinski.violations.length<=1?'Borderline':'Poor Drug-likeness',ovc=lipinski.passes&&veber.passes?'ok':lipinski.violations.length<=1?'warn':'bad';
+  const mets=[{l:'MW',v:mw>0?mw.toFixed(0):'—',u:'Da',s:mw>0?Math.max(0,100-Math.max(0,mw-300)*0.4):0,p:mw<=500},{l:'LogP',v:logp?logp.toFixed(2):'—',u:'',s:logp>=0&&logp<=3?90:logp<0||logp>5?20:60,p:logp<=5},{l:'HBD',v:hbd,u:'',s:hbd<=3?95:hbd<=5?70:30,p:hbd<=5},{l:'TPSA',v:tpsa?tpsa.toFixed(0):'—',u:'Å²',s:tpsa<=60?90:tpsa<=90?75:tpsa<=140?55:20,p:tpsa<=140},{l:'RotB',v:rotb,u:'',s:rotb<=5?95:rotb<=10?70:30,p:rotb<=10}];
+  const mH=mets.map(m=>`<div class="mc ${m.p?'':'fail'}"><div class="mc-lbl">${m.l}</div><div class="mc-val">${m.v}<span class="mc-unit"> ${m.u}</span></div><div class="mc-bw"><div class="mc-b" style="width:${Math.round(m.s)}%;background:${m.p?'var(--green)':'var(--amber)'}"></div></div><div class="mc-s" style="color:${m.p?'var(--green)':'var(--amber)'}">${m.p?'✓':'!'}</div></div>`).join('');
+  const pi=`<div class="insight plain"><strong>What does this mean?</strong> This checks whether <strong>${compound}</strong> has the properties a drug needs to survive in the body. ${lipinski.passes?'It <strong style="color:var(--green)">passes</strong> the standard drug-likeness test — should be absorbable by mouth.':'It has <strong style="color:var(--amber)">'+(lipinski.violations.length)+' violation(s)</strong>: '+lipinski.violations.join(', ')+'.'} ${bbb?' It may <strong>cross the blood-brain barrier</strong>.':''} ${mp===4?' Already <strong style="color:var(--green)">FDA/EMA approved</strong>.':mp>=1?' Reached <strong>clinical Phase '+mp+'</strong>.':''}</div>`;
+  const sy=synthesis||{},ss=sy.summary||'',sf=sy.keyFindings||[];
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">MolProfile — Drug Viability Report</span><span class="badge ${ovc}">${ol}</span></div><div class="mrow">${cid?`<span class="mi">PubChem: <span><a href="https://pubchem.ncbi.nlm.nih.gov/compound/${cid}" target="_blank" style="color:var(--blue)">CID ${cid} ↗</a></span></span>`:''} ${chembl?.chembl_id?`<span class="mi">ChEMBL: <span><a href="https://www.ebi.ac.uk/chembl/compound_report_card/${chembl.chembl_id}/" target="_blank" style="color:var(--blue)">${chembl.chembl_id} ↗</a></span></span>`:''} ${pl?`<span class="mi">Stage: <span style="color:${pc}">${pl}</span></span>`:''}</div>${pi}<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:${lipinski.passes?'rgba(74,180,100,.06)':'rgba(212,168,67,.06)'};border:1px solid ${lipinski.passes?'rgba(74,180,100,.2)':'rgba(212,168,67,.2)'};border-radius:6px"><div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">LIPINSKI RULE OF FIVE</div><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:${lipinski.passes?'var(--green)':'var(--amber)'}">${lipinski.passes?'✓ Passes':lipinski.violations.length+' violation(s)'}</div>${lipinski.violations.length?`<div style="font-size:11px;color:var(--amber);margin-top:2px">${lipinski.violations.join(' · ')}</div>`:''}</div><div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">VEBER ORAL</div><div style="font-family:var(--mono);font-size:13px;color:${veber.passes?'var(--green)':'var(--amber)'}">${veber.passes?'✓ Passes':'! Fails'}</div></div><div style="margin-left:16px;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">BBB PENETRATION</div><div style="font-family:var(--mono);font-size:13px;color:${bbb?'var(--teal)':'var(--text3)'}">${bbb?'~ Possible':'~ Unlikely'}</div></div></div><div class="mgrid">${mH}</div>${chembl?.indication||chembl?.drug_type?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${chembl?.indication?`<div class="fi" style="flex:1;min-width:180px"><span class="finum">IND</span><span class="fitxt">${chembl.indication}</span></div>`:''} ${chembl?.drug_type?`<div class="fi" style="flex:1;min-width:120px"><span class="finum">TYPE</span><span class="fitxt">${chembl.drug_type}</span></div>`:''} ${chembl?.oral!=null?`<div class="fi" style="flex:1;min-width:100px"><span class="finum">ORAL</span><span class="fitxt" style="color:${chembl.oral?'var(--green)':'var(--red)'}">${chembl.oral?'Yes':'No'}</span></div>`:''}</div>`:''}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Drug Viability Interpretation</p><p class="rtxt">${ss}</p>`:''}${sf.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}<div style="margin-top:12px;padding:10px;background:rgba(74,180,100,.04);border:1px solid rgba(74,180,100,.12);border-radius:6px;font-size:11px;color:var(--text3);line-height:1.5">Data from PubChem (NIH) and ChEMBL (EMBL-EBI). Equivalent to SwissADME profiling. For research use only.</div>${hcta('molprofile',d)}</div>`;
+}
+
+function eHTML(msg,noRes){
+  const m={rate_limit:"We've hit the AI request limit. Wait 30 seconds and retry.",blocked_403:"A data source is blocking requests from this server.",Failed_to_fetch:"Cannot reach the backend. Wait 30 seconds and retry."};
+  const disp=m[msg]||msg;
+  return `<div class="ecard"><span style="font-family:var(--mono);font-size:16px;color:${noRes?'var(--amber)':'var(--red)'}">${noRes?'○':'!'}</span><div><p class="etitle">${noRes?'No results found':'Error'}</p><p class="emsg">${disp}</p><button class="rbtn" onclick="document.getElementById('runbtn').click()">↺ Retry</button></div></div>`;
+}
+
+// ── GLOBAL DISEASE SYNC ───────────────────────────────────────────────────────
+document.getElementById('gDisease').addEventListener('input',function(){const el=document.getElementById('f-disease');if(el)el.value=this.value;});
+
+// ── 3D STRUCTURE VIEWER ───────────────────────────────────────────────────────
+const activeViewers = {};
+
+function show3DViewer(scope, uniprotId, pdbUrl, protName, mutResidue) {
+  const container = document.getElementById('viewer-' + scope + '-container');
+  if (!container) return;
+  if (activeViewers[scope]) { container.innerHTML = ''; delete activeViewers[scope]; return; }
+
+  const hasMutation = mutResidue && mutResidue > 0;
+  container.innerHTML = `
+    <div class="viewer-panel">
+      <div class="viewer-hdr">
+        <span class="viewer-title">🧬 ${protName} Structure</span>
+        <span class="viewer-id">${uniprotId}</span>
+        <div class="viewer-ctrls">
+          <button class="vctrl active" data-mode="plddt" onclick="changeViewMode('${scope}','plddt')">pLDDT</button>
+          <button class="vctrl" data-mode="spectrum" onclick="changeViewMode('${scope}','spectrum')">Rainbow</button>
+          <button class="vctrl" data-mode="cartoon" onclick="changeViewMode('${scope}','cartoon')">Plain</button>
+          ${hasMutation ? `<button class="vctrl" data-mode="mutation" onclick="changeViewMode('${scope}','mutation')">Highlight Mutation</button>` : ''}
+          <button class="vctrl" onclick="document.getElementById('viewer-${scope}-container').innerHTML='';delete activeViewers['${scope}']">Close</button>
+        </div>
+      </div>
+      <div class="viewer-body" id="viewer-${scope}-body">
+        <div class="viewer-loading" id="viewer-${scope}-loading">
+          <div class="spinner" style="width:28px;height:28px"></div>
+          <div>Loading structure from AlphaFold DB...</div>
+        </div>
+      </div>
+      <div class="viewer-legend">
+        <div class="legend-item"><div class="legend-sq" style="background:#0053D6"></div>Very high (pLDDT > 90)</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#65CBF3"></div>Confident (70–90)</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#FFDB13"></div>Low (50–70)</div>
+        <div class="legend-item"><div class="legend-sq" style="background:#FF7D45"></div>Very low (< 50)</div>
+        <span class="viewer-hint">Drag to rotate · Scroll to zoom</span>
+      </div>
+    </div>
+  `;
+
+  // Initialize 3Dmol.js viewer
+  setTimeout(() => {
+    if (typeof $3Dmol === 'undefined') {
+      document.getElementById('viewer-' + scope + '-loading').innerHTML =
+        '<div style="color:var(--amber)">3Dmol.js failed to load. Check your connection.</div>';
+      return;
+    }
+    const viewerEl = document.getElementById('viewer-' + scope + '-body');
+    const viewer = $3Dmol.createViewer(viewerEl, { backgroundColor: '#0a0e0b' });
+    activeViewers[scope] = { viewer, uniprotId, mutResidue: mutResidue || 0, mode: 'plddt' };
+
+    // AlphaFold DB PDB URL pattern
+    const url = pdbUrl || `https://alphafold.ebi.ac.uk/files/AF-${uniprotId}-F1-model_v4.pdb`;
+
+    fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error('PDB fetch failed: ' + r.status);
+        return r.text();
+      })
+      .then(pdbData => {
+        viewer.addModel(pdbData, 'pdb');
+        applyViewMode(scope, 'plddt');
+        viewer.zoomTo();
+        viewer.render();
+        const loader = document.getElementById('viewer-' + scope + '-loading');
+        if (loader) loader.classList.add('hidden');
+      })
+      .catch(err => {
+        const loader = document.getElementById('viewer-' + scope + '-loading');
+        if (loader) loader.innerHTML = '<div style="color:var(--amber)">Could not load structure: ' + err.message + '</div>';
+      });
+  }, 50);
+}
+
+function applyViewMode(scope, mode) {
+  const state = activeViewers[scope];
+  if (!state) return;
+  const { viewer, mutResidue } = state;
+  state.mode = mode;
+
+  viewer.removeAllSurfaces();
+  viewer.setStyle({}, {});
+
+  if (mode === 'plddt') {
+    // AlphaFold pLDDT coloring — bfactor in PDB holds pLDDT score
+    viewer.setStyle({}, {
+      cartoon: {
+        colorfunc: (atom) => {
+          const b = atom.b || 50;
+          if (b > 90) return '#0053D6';
+          if (b > 70) return '#65CBF3';
+          if (b > 50) return '#FFDB13';
+          return '#FF7D45';
+        }
+      }
+    });
+  } else if (mode === 'spectrum') {
+    viewer.setStyle({}, { cartoon: { color: 'spectrum' } });
+  } else if (mode === 'cartoon') {
+    viewer.setStyle({}, { cartoon: { color: '#4ab464' } });
+  } else if (mode === 'mutation' && mutResidue > 0) {
+    // Grey cartoon + highlighted mutation residue
+    viewer.setStyle({}, { cartoon: { color: '#556755' } });
+    viewer.addStyle({ resi: mutResidue }, {
+      cartoon: { color: '#ff3333' },
+      stick: { color: '#ff3333', radius: 0.3 }
+    });
+    viewer.addResLabels({ resi: mutResidue }, {
+      fontColor: '#ffffff',
+      backgroundColor: '#ff3333',
+      fontSize: 12,
+      showBackground: true
+    });
+    viewer.zoomTo({ resi: mutResidue });
+  }
+  viewer.render();
+}
+
+function changeViewMode(scope, mode) {
+  applyViewMode(scope, mode);
+  document.querySelectorAll('#viewer-' + scope + '-container .vctrl[data-mode]').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+go('welcome');
+</script>
+</body>
+</html>

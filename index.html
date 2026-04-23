@@ -566,35 +566,69 @@ async function callTool(id,p){
   }
 
   if(id==='trialmatch'){
-    const cp=new URLSearchParams({'query.cond':p.disease,'filter.overallStatus':'RECRUITING','pageSize':'20','format':'json'});
-    if(p.gender&&p.gender!=='Other')cp.set('filter.sex',p.gender.toUpperCase());
-    let trials=[];
-    try{
-      const r=await fetch('https://clinicaltrials.gov/api/v2/studies?'+cp,{headers:{Accept:'application/json'}});
-      if(r.ok){const d=await r.json();for(const s of(d.studies||[])){try{const pm2=s.protocolSection||{},id2=pm2.identificationModule||{},dm=pm2.descriptionModule||{},em=pm2.eligibilityModule||{},dsm=pm2.designModule||{},sm=pm2.sponsorCollaboratorsModule||{},cm=pm2.conditionsModule||{},im=pm2.armsInterventionsModule||{},lm=pm2.contactsLocationsModule||{};trials.push({nct_id:id2.nctId||'',title:id2.briefTitle||'No title',summary:(dm.briefSummary||'').slice(0,400),eligibility:(em.eligibilityCriteria||'').slice(0,600),min_age:em.minimumAge||'',max_age:em.maximumAge||'',sex:em.sex||'ALL',phase:(dsm.phases||[]).join(', ')||'N/A',sponsor:(sm.leadSponsor||{}).name||'',conditions:(cm.conditions||[]).slice(0,3),interventions:(im.interventions||[]).slice(0,3).map(iv=>iv.name).filter(Boolean),locations:(lm.locations||[]).slice(0,3).map(l=>[l.city,l.country].filter(Boolean).join(', '))});}catch(_){}}}
-    }catch(_){
-      try{const r=await fetch('https://clinicaltrialsapi.cancer.gov/api/v2/trials?diseases.name='+encodeURIComponent(p.disease)+'&current_trial_status=Active&size=15',{headers:{accept:'application/json'}});if(r.ok){const d=await r.json();for(const t of(d.data||[])){const el=t.eligibility||{},st=el.structured||{},un=el.unstructured||[];trials.push({nct_id:t.nct_id||'',title:t.brief_title||'No title',summary:(t.brief_summary||'').slice(0,400),eligibility:un.map(u=>u.description||'').join(' ').slice(0,600),min_age:String(st.min_age_in_years||''),max_age:String(st.max_age_in_years||''),sex:st.gender||'ALL',phase:(t.phase||{}).phase||'N/A',sponsor:t.lead_org||'',conditions:(t.diseases||[]).slice(0,3).map(d2=>d2.name||''),interventions:(t.arms||[]).slice(0,3).map(a=>((a.interventions||[])[0]||{}).intervention_name||'').filter(Boolean),locations:(t.sites||[]).slice(0,3).map(s=>[s.org_city,s.org_country].filter(Boolean).join(', '))});}}}catch(_){}
-    }
+    // FIX: Direct browser fetch to ClinicalTrials.gov is blocked by CORS.
+    // Route through backend which uses actual endpoints: /search-trials + /match
+    const tmBase='https://trialmatch-server.onrender.com';
+    // Step 1: fetch trials from backend (backend calls ClinicalTrials.gov server-side)
+    const params={disease:p.disease};
+    if(p.gender&&p.gender!=='Other')params.gender=p.gender;
+    const trialData=await ag(tmBase+'/search-trials',params);
+    const trials=Array.isArray(trialData)?trialData:(trialData&&trialData.trials?trialData.trials:[]);
     if(!trials.length)return{_noTrials:true,_disease:p.disease};
-    return ap(base+'/match',{patient:{condition:p.disease,age:p.age||'',gender:p.gender||'',current_treatment:p.current_treatment||''},trials});
-  }
-
-  if(id==='alphamissense'){
-    const gene=p.gene.trim().toUpperCase(), variant=p.variant.trim().replace(/\s+/g,'');
+    // Step 2: AI match scoring
+    return ap(tmBase+'/match',{patient:{condition:p.disease,age:p.age||'',gender:p.gender||'',current_treatment:p.current_treatment||''},trials});
+  }  if(id==='alphamissense'){
+    const gene=p.gene.trim().toUpperCase();
+    const variant=p.variant.trim().replace(/\s+/g,'').toUpperCase();
     const AA={A:'Ala',C:'Cys',D:'Asp',E:'Glu',F:'Phe',G:'Gly',H:'His',I:'Ile',K:'Lys',L:'Leu',M:'Met',N:'Asn',P:'Pro',Q:'Gln',R:'Arg',S:'Ser',T:'Thr',V:'Val',W:'Trp',Y:'Tyr'};
-    const vm=variant.match(/^([A-Z])(\d+)([A-Z])$/i);
+    const vm=variant.match(/^([A-Za-z])(\d+)([A-Za-z])$/);
     const hgvsP=vm?(AA[vm[1].toUpperCase()]||vm[1])+vm[2]+(AA[vm[3].toUpperCase()]||vm[3]):null;
     let ensGene=null,amScore=null,amClass=null,vepData=null,uniprotId=null,af=null;
-    try{const r=await fetch('https://rest.ensembl.org/lookup/symbol/homo_sapiens/'+gene+'?content-type=application/json');if(r.ok)ensGene=await r.json();}catch(_){}
-    if(ensGene&&hgvsP){try{const r=await fetch('https://rest.ensembl.org/vep/human/hgvs/'+gene+':p.'+hgvsP+'?content-type=application/json&AlphaMissense=1&protein=1&canonical=1');if(r.ok){const a=await r.json();vepData=a[0]||null;if(vepData){for(const tc of(vepData.transcript_consequences||[])){if(tc.alphamissense_score!==undefined){amScore=tc.alphamissense_score;amClass=tc.alphamissense_pathogenicity||null;break;}}}}}catch(_){}}
-    if(ensGene){try{const r=await fetch('https://rest.ensembl.org/xrefs/id/'+ensGene.id+'?content-type=application/json&external_db=Uniprot/SWISSPROT');if(r.ok){const d=await r.json();if(d&&d[0])uniprotId=d[0].primary_id;}}catch(_){}}
-    if(uniprotId){try{const r=await fetch('https://alphafold.ebi.ac.uk/api/prediction/'+uniprotId);if(r.ok){const d=await r.json();if(d&&d[0])af={uniprot_id:d[0].uniprotAccession,pdbUrl:d[0].pdbUrl,plddt:d[0].plddt,entryId:d[0].entryId};}}catch(_){}}
+    // Ensembl REST supports CORS — call directly from browser
+    try{
+      const r=await fetch('https://rest.ensembl.org/lookup/symbol/homo_sapiens/'+encodeURIComponent(gene)+'?content-type=application/json',{headers:{Accept:'application/json'}});
+      if(r.ok)ensGene=await r.json();
+    }catch(_){}
+    // VEP call for AlphaMissense score — use gene:p.HGVSp format
+    if(ensGene&&hgvsP){
+      try{
+        const hgvs=encodeURIComponent(gene+':p.'+hgvsP);
+        const r=await fetch('https://rest.ensembl.org/vep/human/hgvs/'+hgvs+'?content-type=application/json&AlphaMissense=1&protein=1&canonical=1',{headers:{Accept:'application/json'}});
+        if(r.ok){
+          const a=await r.json();
+          if(Array.isArray(a)&&a[0]){
+            vepData=a[0];
+            for(const tc of(vepData.transcript_consequences||[])){
+              if(tc.alphamissense_score!==undefined){amScore=tc.alphamissense_score;amClass=tc.alphamissense_pathogenicity||null;break;}
+            }
+          }
+        }
+      }catch(_){}
+    }
+    // Get UniProt ID for AlphaFold lookup
+    if(ensGene&&ensGene.id){
+      try{
+        const r=await fetch('https://rest.ensembl.org/xrefs/id/'+ensGene.id+'?content-type=application/json&external_db=Uniprot/SWISSPROT',{headers:{Accept:'application/json'}});
+        if(r.ok){const d=await r.json();if(d&&d[0])uniprotId=d[0].primary_id;}
+      }catch(_){}
+    }
+    // AlphaFold structure data
+    if(uniprotId){
+      try{
+        const r=await fetch('https://alphafold.ebi.ac.uk/api/prediction/'+uniprotId,{headers:{Accept:'application/json'}});
+        if(r.ok){const d=await r.json();if(d&&d[0])af={uniprot_id:d[0].uniprotAccession,pdbUrl:d[0].pdbUrl,plddt:d[0].plddt,entryId:d[0].entryId};}
+      }catch(_){}
+    }
+    // AI synthesis via scisynth /synthesize
     let synthesis=null;
-    try{const hyp='The '+gene+' '+variant+' missense variant is pathogenic and causes disease';const paper={title:'AlphaMissense analysis of '+gene+' '+variant,authors:'DeepMind/EMBL-EBI',year:'2024',journal:'Computational Analysis',abstract:'Gene: '+gene+'. Variant: '+variant+(hgvsP?' (p.'+hgvsP+')':'')+'. AM score: '+(amScore!==null?amScore:'not retrieved')+'. Classification: '+(amClass||'not retrieved')+'. Context: '+(p.disease_context||'general')+'.'};synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{hypothesis:hyp,papers:[paper]});}catch(_){}
+    try{
+      const scoreText=amScore!==null?'Score: '+amScore+' ('+( amScore>0.564?'Likely Pathogenic':amScore<0.34?'Likely Benign':'Ambiguous')+')':'Score not available from Ensembl VEP for this variant';
+      const hyp='The '+gene+' '+variant+' missense variant is '+(amScore!==null?(amScore>0.564?'likely pathogenic':'likely benign'):'being assessed for pathogenicity');
+      const paper={title:'AlphaMissense variant analysis: '+gene+' '+variant,authors:'Google DeepMind / EMBL-EBI',year:'2024',journal:'Science (AlphaMissense)',abstract:'Gene: '+gene+'. Variant: '+variant+(hgvsP?' (p.'+hgvsP+')':'')+'. AlphaMissense '+scoreText+'. Disease context: '+(p.disease_context||'not specified')+'. Gene function: '+(ensGene&&ensGene.description?ensGene.description:'not retrieved')+'.'};
+      synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{hypothesis:hyp,papers:[paper]});
+    }catch(_){}
     return{gene,variant,hgvsP,amScore,amClass,vepData,alphafold:af,ensGene,synthesis,disease_context:p.disease_context};
-  }
-
-  if(id==='molprofile'){
+  }  if(id==='molprofile'){
     const compound=p.compound.trim();
     let cid=null,pubchem=null,chembl=null;
     try{const r=await fetch('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/'+encodeURIComponent(compound)+'/cids/JSON');if(r.ok){const d=await r.json();cid=(d.IdentifierList?.CID||[])[0]||null;}if(cid){const r2=await fetch('https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/'+cid+'/property/MolecularFormula,MolecularWeight,XLogP,HBondDonorCount,HBondAcceptorCount,RotatableBondCount,TPSA,IUPACName/JSON');if(r2.ok){const d=await r2.json();pubchem=d.PropertyTable?.Properties?.[0]||null;}}}catch(_){}
@@ -997,14 +1031,69 @@ function rRepurpose(d,p){
 }
 
 function rTrial(d,p){
-  if(d._noTrials)return eHTML('No recruiting trials found for "'+d._disease+'". Use a canonical disease name (e.g. "systemic lupus erythematosus").',true);
+  if(d._noTrials)return eHTML('No recruiting trials found for "'+d._disease+'". Try a more specific disease name (e.g. "breast cancer" → "triple negative breast cancer").',true);
   if(d.error)return eHTML(d.error);
   const ms=d.matches||[];
-  if(!ms.length)return eHTML('No trial matches. Try broadening the patient profile.',true);
-  const tH=ms.map(m=>{const tr=m.trial||{},mc=m.match==='Strong Match'?'var(--green)':m.match==='Possible Match'?'var(--amber)':'var(--text3)';return`<div class="trc"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><p class="trid">${m.nct_id||tr.nct_id||''}</p><span style="font-family:var(--mono);font-size:11px;color:${mc}">${m.match||''} · ${m.score||0}</span></div><p class="trtl">${tr.title||'Unknown Trial'}</p><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-family:var(--mono);font-size:10px;color:var(--text3)">${tr.phase?`<span>Phase: <span style="color:var(--text2)">${tr.phase}</span></span>`:''} ${tr.sponsor?`<span>Sponsor: <span style="color:var(--text2)">${tr.sponsor}</span></span>`:''} ${(tr.locations||[]).length?`<span>Sites: <span style="color:var(--text2)">${tr.locations.slice(0,2).join(' · ')}</span></span>`:''}</div>${m.recommendation?`<p style="font-size:12px;color:var(--text2);margin-bottom:6px">${m.recommendation}</p>`:''} ${(m.reasons||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px">${m.reasons.map(r=>`<span style="font-size:11px;color:var(--green);background:rgba(74,180,100,.08);padding:2px 8px;border-radius:3px">+ ${r}</span>`).join('')}</div>`:''} ${(m.concerns||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${m.concerns.map(c=>`<span style="font-size:11px;color:var(--amber);background:rgba(212,168,67,.08);padding:2px 8px;border-radius:3px">⚠ ${c}</span>`).join('')}</div>`:''}</div>`;}).join('');
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">TrialMatch — Clinical Trial Matches</span><span class="badge ok">${ms.length} Matches</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span>${p.age?`<span class="mi">Age: <span>${p.age}</span></span>`:''} ${p.gender?`<span class="mi">Gender: <span>${p.gender}</span></span>`:''}</div>${tH}${sourcesPanel(buildSources('trialmatch',d))}${exportBar('trialmatch')}</div>`;
+  if(!ms.length)return eHTML('No trial matches returned. Try broadening the patient profile.',true);
+  const total=ms.length;
+  const strong=ms.filter(m=>m.match==='Strong Match').length;
+  const tH=ms.map(m=>{
+    const tr=m.trial||{};
+    const score=m.score||0;
+    const matchLabel=m.match||'Match';
+    const isStrong=matchLabel==='Strong Match';
+    const isPossible=matchLabel==='Possible Match';
+    const scoreCol=isStrong?'var(--green)':isPossible?'var(--amber)':'var(--text3)';
+    const scoreBg=isStrong?'rgba(74,180,100,.15)':isPossible?'rgba(212,168,67,.12)':'rgba(255,255,255,.06)';
+    const nctId=m.nct_id||tr.nct_id||'';
+    const nctUrl=nctId?'https://clinicaltrials.gov/study/'+nctId:'#';
+    const phase=tr.phase||'';
+    const sponsor=tr.sponsor||'';
+    const locs=(tr.locations||[]).slice(0,3).join(' · ');
+    const reasons=m.reasons||m.why_it_fits||[];
+    const concerns=m.concerns||m.watch_out_for||[];
+    const rec=m.recommendation||'';
+    return '<div style="border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:16px;margin-bottom:12px;background:rgba(255,255,255,.02)">'
+      +'<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">'
+      +'<div style="min-width:48px;height:48px;border-radius:50%;background:'+scoreCol+';display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;color:#0a0a0a;flex-shrink:0">'+score+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<p style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:6px;line-height:1.4">'+(tr.title||'Unknown Trial')+'</p>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">'
+      +'<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:'+scoreCol+';background:'+scoreBg+';padding:2px 8px;border-radius:3px;border:1px solid '+scoreCol+'40">'+matchLabel+'</span>'
+      +(phase?'<span style="font-family:var(--mono);font-size:10px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:3px">'+phase+'</span>':'')
+      +(sponsor?'<span style="font-family:var(--mono);font-size:10px;color:var(--text2)">'+sponsor+'</span>':'')
+      +(nctId?'<a href="'+nctUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:10px;color:var(--blue);text-decoration:none">'+nctId+' ↗</a>':'')
+      +'</div></div></div>'
+      +(rec?'<p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5;background:rgba(255,255,255,.03);padding:8px 10px;border-radius:4px;border-left:2px solid rgba(255,255,255,.15)">'+rec+'</p>':'')
+      +((reasons.length||concerns.length)?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+        +(reasons.length?'<div style="background:rgba(74,180,100,.06);border:1px solid rgba(74,180,100,.15);border-radius:5px;padding:8px 10px">'
+          +'<p style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase">Why it fits</p>'
+          +reasons.map(r=>'<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:var(--green);font-size:10px;flex-shrink:0">●</span><span style="font-size:11px;color:var(--text2)">'+r+'</span></div>').join('')
+          +'</div>':'')
+        +(concerns.length?'<div style="background:rgba(212,168,67,.06);border:1px solid rgba(212,168,67,.15);border-radius:5px;padding:8px 10px">'
+          +'<p style="font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase">Watch out for</p>'
+          +concerns.map(c=>'<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:var(--amber);font-size:10px;flex-shrink:0">●</span><span style="font-size:11px;color:var(--text2)">'+c+'</span></div>').join('')
+          +'</div>':'')
+        +'</div>':'')
+      +(locs?'<p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px">📍 '+locs+'</p>':'')
+      +'</div>';
+  }).join('');
+  return '<div class="rcard">'
+    +'<div class="rhdr"><span class="rtitle">TrialMatch — Clinical Trial Matches</span>'
+    +'<div style="display:flex;gap:8px">'
+    +'<span class="badge ok">'+total+' found</span>'
+    +(strong?'<span class="badge" style="background:rgba(74,180,100,.15);color:var(--green);border:1px solid rgba(74,180,100,.3)">'+strong+' strong</span>':'')
+    +'</div></div>'
+    +'<div class="mrow">'
+    +'<span class="mi">Disease: <span>'+p.disease+'</span></span>'
+    +(p.age?'<span class="mi">Age: <span>'+p.age+'</span></span>':'')
+    +(p.gender?'<span class="mi">Gender: <span>'+p.gender+'</span></span>':'')
+    +'</div>'
+    +tH
+    +sourcesPanel(buildSources('trialmatch',d))
+    +exportBar('trialmatch')
+    +'</div>';
 }
-
 function rAM(d){
   if(d.error)return eHTML(d.error);
   const{gene,variant,hgvsP,amScore,amClass,alphafold:af,synthesis,ensGene,disease_context}=d;

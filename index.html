@@ -202,6 +202,26 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
 .show-3d-btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--blue);background:rgba(91,155,212,.08);border:1px solid rgba(91,155,212,.25);border-radius:4px;padding:5px 12px;cursor:pointer;transition:all .15s;margin-top:8px}
 .show-3d-btn:hover{background:rgba(91,155,212,.15);border-color:var(--blue)}
 .show-3d-btn:disabled{opacity:.5;cursor:not-allowed}
+/* CITATIONS & SOURCES */
+.cite{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:9px;color:var(--teal);background:rgba(69,179,162,.08);border:1px solid rgba(69,179,162,.2);border-radius:3px;padding:1px 5px;margin:0 2px;cursor:pointer;text-decoration:none;transition:all .12s;vertical-align:baseline}
+.cite:hover{background:rgba(69,179,162,.18);border-color:var(--teal);color:var(--teal)}
+.sources-panel{margin-top:16px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px}
+.sources-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal)}
+.sources-count{font-family:var(--mono);font-size:10px;color:var(--text3)}
+.source-item{display:flex;gap:8px;padding:6px 0;border-bottom:1px dashed var(--border);font-size:11px;line-height:1.5}
+.source-item:last-child{border-bottom:none}
+.source-idx{font-family:var(--mono);font-size:10px;color:var(--teal);min-width:28px;flex-shrink:0}
+.source-body{flex:1;color:var(--text2)}
+.source-body a{color:var(--blue);text-decoration:none}
+.source-body a:hover{text-decoration:underline}
+.source-tag{font-family:var(--mono);font-size:9px;color:var(--text3);padding:1px 5px;border:1px solid var(--border);border-radius:3px;margin-right:4px}
+/* EXPORT BAR */
+.export-bar{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.export-lbl{font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+.export-btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--text2);background:transparent;border:1px solid var(--border2);border-radius:4px;padding:5px 12px;cursor:pointer;transition:all .12s}
+.export-btn:hover{border-color:var(--green);color:var(--green);background:var(--gdim)}
+.export-btn.primary{color:var(--green);border-color:rgba(74,180,100,.3);background:var(--gdim)}
+.export-btn.primary:hover{background:var(--glow)}
 @media(max-width:768px){.sidebar{display:none}.content{max-width:100%}.hdr{padding:0 1rem}.ctx-wrap{max-width:160px}.tgrid{grid-template-columns:1fr}.mgrid{grid-template-columns:repeat(3,1fr)}.viewer-body{height:300px}}
 </style>
 </head>
@@ -510,15 +530,16 @@ async function callTool(id,p){
   if(id==='scisynth'){
     const s=await ag(base+'/search',{query:p.hypothesis,max_results:15});
     const papers=s.papers||[];
-    if(!papers.length)return{verdict:'Insufficient Evidence',confidence:'Low',summary:'No papers found. Try rephrasing your hypothesis.',keyFindings:[]};
-    return ap(base+'/synthesize',{hypothesis:p.hypothesis,papers});
+    if(!papers.length)return{verdict:'Insufficient Evidence',confidence:'Low',summary:'No papers found. Try rephrasing your hypothesis.',keyFindings:[],_papers:[]};
+    const res=await ap(base+'/synthesize',{hypothesis:p.hypothesis,papers});
+    return{...res,_papers:papers};
   }
 
   if(id==='targetscope'){
     const[ot,pm]=await Promise.all([ag(base+'/opentargets',{disease:p.disease}),ag(base+'/pubmed-targets',{disease:p.disease})]);
     const targets=ot.targets||[], papers=Array.isArray(pm)?pm:(pm.papers||[]);
     const res=await ap(base+'/analyze',{disease:p.disease,targets,papers,context:''});
-    return{...res,_topTarget:(res.top_targets&&res.top_targets[0]?.symbol)||''};
+    return{...res,_topTarget:(res.top_targets&&res.top_targets[0]?.symbol)||'',_papers:papers,_ot_targets:targets};
   }
 
   if(id==='bindpredict'){
@@ -526,19 +547,22 @@ async function callTool(id,p){
     let af=null;
     if(protein.uniprot_id){try{const r=await fetch('https://alphafold.ebi.ac.uk/api/prediction/'+protein.uniprot_id);if(r.ok){const d=await r.json();if(d&&d[0])af={uniprot_id:d[0].uniprotAccession,pdbUrl:d[0].pdbUrl,plddt:d[0].plddt,entryId:d[0].entryId};}}catch(_){}}
     const res=await ap(base+'/predict',{protein,ligand,context:p.disease||''});
-    return{...res,alphafold:af,_compound:p.compound};
+    return{...res,alphafold:af,_compound:p.compound,_target:p.target,protein_meta:protein,ligand_meta:ligand};
   }
 
   if(id==='biosignal'){
     const bt=p.biomarker_type||'Prognostic';
     const[pm,dg]=await Promise.all([ag(base+'/pubmed-biomarkers',{disease:p.disease,biomarker_type:bt.toLowerCase()}),ag(base+'/disgenet',{disease:p.disease})]);
-    return ap(base+'/analyze',{disease:p.disease,biomarker_type:bt,papers:Array.isArray(pm)?pm:[],genes:Array.isArray(dg)?dg:[],patient_context:''});
+    const papers=Array.isArray(pm)?pm:[],genes=Array.isArray(dg)?dg:[];
+    const res=await ap(base+'/analyze',{disease:p.disease,biomarker_type:bt,papers,genes,patient_context:''});
+    return{...res,_papers:papers,_genes:genes};
   }
 
   if(id==='repurposerx'){
     const[ot,pm]=await Promise.all([ag(base+'/opentargets-drugs',{disease:p.disease}),ag(base+'/pubmed-repurpose',{disease:p.disease})]);
-    const res=await ap(base+'/analyze',{disease:p.disease,known_drugs:ot.known_drugs||[],targets:ot.targets||[],papers:Array.isArray(pm)?pm:[],priority:'efficacy'});
-    return{...res,_topCandidate:(res.repurposing_candidates&&res.repurposing_candidates[0]?.drug_name)||''};
+    const papers=Array.isArray(pm)?pm:[],known_drugs=ot.known_drugs||[],targets=ot.targets||[];
+    const res=await ap(base+'/analyze',{disease:p.disease,known_drugs,targets,papers,priority:'efficacy'});
+    return{...res,_topCandidate:(res.repurposing_candidates&&res.repurposing_candidates[0]?.drug_name)||'',_papers:papers,_known_drugs:known_drugs,_targets:targets};
   }
 
   if(id==='trialmatch'){
@@ -589,9 +613,334 @@ async function callTool(id,p){
 }
 
 // ── RENDERERS ─────────────────────────────────────────────────────────────────
+
+// ── SOURCES & CITATIONS ──────────────────────────────────────────────────────
+// Normalizes raw source records from any tool into a standard citation format.
+// Each source becomes: {id, label, detail, url, tag}
+function buildSources(id, data) {
+  const out = [];
+  let idx = 1;
+
+  // SciSynth: papers array used in synthesis
+  if (id === 'scisynth' && data._papers) {
+    data._papers.forEach(p => {
+      out.push({
+        id: idx++,
+        label: p.title || 'Untitled',
+        detail: [p.authors, p.journal, p.year].filter(Boolean).join(' · '),
+        url: p.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/` : null,
+        tag: p.pmid ? `PMID:${p.pmid}` : 'PubMed'
+      });
+    });
+  }
+
+  // TargetScope: OpenTargets + PubMed papers
+  if (id === 'targetscope') {
+    (data._papers || []).forEach(p => {
+      out.push({
+        id: idx++,
+        label: p.title || 'PubMed paper',
+        detail: p.year || '',
+        url: p.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/` : null,
+        tag: 'PubMed'
+      });
+    });
+    (data.top_targets || []).slice(0, 8).forEach(t => {
+      if (t.symbol) {
+        out.push({
+          id: idx++,
+          label: `${t.symbol} — ${t.name || ''}`,
+          detail: `OpenTargets evidence · priority ${t.priority || 'N/A'}`,
+          url: `https://platform.opentargets.org/target/${t.symbol}`,
+          tag: 'OpenTargets'
+        });
+      }
+    });
+  }
+
+  // BindPredict: UniProt + ChEMBL + AlphaFold
+  if (id === 'bindpredict') {
+    if (data.protein_meta?.uniprot_id) {
+      out.push({
+        id: idx++,
+        label: `${data.protein_meta.full_name || data._target || 'Protein'} (UniProt)`,
+        detail: `UniProt ID ${data.protein_meta.uniprot_id}`,
+        url: `https://www.uniprot.org/uniprotkb/${data.protein_meta.uniprot_id}`,
+        tag: 'UniProt'
+      });
+    }
+    if (data.ligand_meta?.chembl_id) {
+      out.push({
+        id: idx++,
+        label: `${data._compound || 'Compound'} (ChEMBL)`,
+        detail: `ChEMBL ID ${data.ligand_meta.chembl_id}`,
+        url: `https://www.ebi.ac.uk/chembl/compound_report_card/${data.ligand_meta.chembl_id}/`,
+        tag: 'ChEMBL'
+      });
+    }
+    if (data.alphafold?.uniprot_id) {
+      out.push({
+        id: idx++,
+        label: `AlphaFold structure prediction`,
+        detail: `pLDDT ${data.alphafold.plddt ? parseFloat(data.alphafold.plddt).toFixed(1) : 'N/A'}`,
+        url: `https://alphafold.ebi.ac.uk/entry/${data.alphafold.uniprot_id}`,
+        tag: 'AlphaFold'
+      });
+    }
+  }
+
+  // BioSignal: PubMed + DisGeNET
+  if (id === 'biosignal') {
+    (data._papers || []).forEach(p => {
+      out.push({
+        id: idx++,
+        label: p.title || 'Biomarker paper',
+        detail: p.year || '',
+        url: p.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/` : null,
+        tag: 'PubMed'
+      });
+    });
+    (data._genes || []).slice(0, 6).forEach(g => {
+      if (g.gene) {
+        out.push({
+          id: idx++,
+          label: `${g.gene} — disease association`,
+          detail: `DisGeNET score ${g.score || 'N/A'}`,
+          url: null,
+          tag: 'DisGeNET'
+        });
+      }
+    });
+  }
+
+  // RepurposeRx: OpenTargets drugs + PubMed
+  if (id === 'repurposerx') {
+    (data._papers || []).forEach(p => {
+      out.push({
+        id: idx++,
+        label: p.title || 'Repurposing paper',
+        detail: p.year || '',
+        url: p.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/` : null,
+        tag: 'PubMed'
+      });
+    });
+    (data._known_drugs || []).slice(0, 6).forEach(d => {
+      if (d.drug) {
+        out.push({
+          id: idx++,
+          label: `${d.drug} — ${d.mechanism || 'approved'}`,
+          detail: `Phase ${d.phase || 'N/A'} · Target ${d.target || 'N/A'}`,
+          url: null,
+          tag: 'OpenTargets'
+        });
+      }
+    });
+  }
+
+  // TrialMatch: ClinicalTrials.gov NCT IDs
+  if (id === 'trialmatch') {
+    (data.matches || []).forEach(m => {
+      if (m.nct_id) {
+        out.push({
+          id: idx++,
+          label: (m.trial?.title || 'Clinical trial').slice(0, 90),
+          detail: `Phase ${m.trial?.phase || 'N/A'} · ${m.trial?.sponsor || ''}`,
+          url: `https://clinicaltrials.gov/study/${m.nct_id}`,
+          tag: m.nct_id
+        });
+      }
+    });
+  }
+
+  // AlphaMissense: Ensembl + AlphaFold + AlphaMissense
+  if (id === 'alphamissense') {
+    if (data.gene) {
+      out.push({
+        id: idx++,
+        label: `${data.gene} gene (Ensembl)`,
+        detail: data.ensGene?.description || 'Ensembl canonical transcript',
+        url: data.ensGene?.id ? `https://www.ensembl.org/Homo_sapiens/Gene/Summary?g=${data.ensGene.id}` : null,
+        tag: 'Ensembl'
+      });
+    }
+    if (data.amScore !== null && data.amScore !== undefined) {
+      out.push({
+        id: idx++,
+        label: `AlphaMissense pathogenicity prediction`,
+        detail: `Score ${parseFloat(data.amScore).toFixed(3)} — ${data.amClass || 'classified'}`,
+        url: 'https://alphamissense.hegelab.org/',
+        tag: 'AlphaMissense'
+      });
+    }
+    if (data.alphafold?.uniprot_id) {
+      out.push({
+        id: idx++,
+        label: `AlphaFold structure for ${data.gene}`,
+        detail: `UniProt ${data.alphafold.uniprot_id}`,
+        url: `https://alphafold.ebi.ac.uk/entry/${data.alphafold.uniprot_id}`,
+        tag: 'AlphaFold'
+      });
+    }
+  }
+
+  // MolProfile: PubChem + ChEMBL
+  if (id === 'molprofile') {
+    if (data.cid) {
+      out.push({
+        id: idx++,
+        label: `${data.compound} — PubChem record`,
+        detail: `CID ${data.cid} · MW ${data.mw?.toFixed(1) || 'N/A'} · LogP ${data.logp?.toFixed(2) || 'N/A'}`,
+        url: `https://pubchem.ncbi.nlm.nih.gov/compound/${data.cid}`,
+        tag: 'PubChem'
+      });
+    }
+    if (data.chembl?.chembl_id) {
+      out.push({
+        id: idx++,
+        label: `${data.compound} — ChEMBL record`,
+        detail: `Phase ${data.chembl.max_phase ?? 'N/A'} · ${data.chembl.indication || 'no indication listed'}`,
+        url: `https://www.ebi.ac.uk/chembl/compound_report_card/${data.chembl.chembl_id}/`,
+        tag: 'ChEMBL'
+      });
+    }
+  }
+
+  return out;
+}
+
+function sourcesPanel(sources) {
+  if (!sources || !sources.length) return '';
+  const items = sources.map(s => `
+    <div class="source-item">
+      <span class="source-idx">[${s.id}]</span>
+      <div class="source-body">
+        <span class="source-tag">${s.tag}</span>
+        ${s.url ? `<a href="${s.url}" target="_blank" rel="noopener">${s.label}</a>` : s.label}
+        ${s.detail ? `<div style="color:var(--text3);font-size:10px;margin-top:2px">${s.detail}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+  return `<div class="sources-panel">
+    <div class="sources-hdr">
+      <span>📚 Sources</span>
+      <span class="sources-count">${sources.length} reference${sources.length > 1 ? 's' : ''}</span>
+    </div>
+    ${items}
+  </div>`;
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+let lastResult = { id: null, data: null, params: null, sources: null };
+
+function exportBar(id) {
+  return `<div class="export-bar">
+    <span class="export-lbl">Export:</span>
+    <button class="export-btn primary" onclick="exportJSON('${id}')">⬇ JSON (for workflows)</button>
+    <button class="export-btn" onclick="exportPrint('${id}')">🖨 Print / Save as PDF</button>
+    <button class="export-btn" onclick="exportCopy('${id}')">📋 Copy brief</button>
+  </div>`;
+}
+
+function exportJSON(id) {
+  const { data, params, sources } = lastResult;
+  if (!data) return;
+  const payload = {
+    tool: id,
+    tool_name: T[id]?.name || id,
+    generated_at: new Date().toISOString(),
+    generated_by: 'DrugIQ — drugiq.vercel.app',
+    input_parameters: params,
+    result: data,
+    sources: sources || [],
+    schema_version: '1.0',
+    intended_use: 'Structured output for downstream workflows (e.g. Benchling, Amazon Bio Discovery, CRO briefs). For research use only — not clinical.'
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.href = url;
+  a.download = `drugiq-${id}-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportPrint(id) {
+  const out = document.getElementById('out');
+  if (!out) return;
+  const clone = out.cloneNode(true);
+  // Strip buttons from the clone
+  clone.querySelectorAll('.export-bar, .show-3d-btn, .vctrl, .viewer-panel, .hbtn, .chip').forEach(el => el.remove());
+  const t = T[id];
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>DrugIQ ${t?.name || id} — ${new Date().toLocaleDateString()}</title>
+    <style>
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:800px;margin:40px auto;padding:20px;color:#1a1a1a;line-height:1.6}
+      h1{font-size:22px;margin-bottom:4px;color:#1a1a1a}
+      .meta{color:#666;font-size:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #e0e0e0}
+      .meta a{color:#2a7;text-decoration:none}
+      h2,h3{color:#1a5f2a;margin-top:20px}
+      .badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:500;background:#e8f5e9;color:#1a5f2a}
+      .badge.warn{background:#fff8e1;color:#a17b00}
+      .badge.bad{background:#ffeaea;color:#a33}
+      .rcard,.rhdr,.mrow,.fi,.insight,.cbar-row,.sources-panel,.biomarker-card,.bmc,.mc,.trc{background:#fafafa;border:1px solid #e0e0e0;padding:10px;border-radius:4px;margin:8px 0}
+      .cite{background:#e8f5e9;color:#1a5f2a;padding:2px 6px;border-radius:3px;font-size:11px;margin:0 2px;font-family:monospace}
+      .cbar-wrap{background:#eee;height:6px;border-radius:3px;overflow:hidden}
+      .cbar{height:100%;background:#2a7}
+      .source-item{padding:6px 0;border-bottom:1px dashed #ddd;font-size:13px}
+      .source-item:last-child{border-bottom:none}
+      .source-idx{color:#1a5f2a;font-weight:500;font-family:monospace}
+      .source-tag{display:inline-block;font-size:10px;padding:1px 6px;border:1px solid #ddd;border-radius:3px;margin-right:6px;font-family:monospace;color:#666}
+      a{color:#2a7}
+      @media print{.meta{border-bottom:2px solid #000}.badge{border:1px solid #999}}
+    </style></head><body>
+    <h1>${t?.name || 'DrugIQ'} — ${t?.sub || 'Result'}</h1>
+    <div class="meta">
+      Generated: ${new Date().toLocaleString()}<br>
+      Source: <a href="https://drugiq.vercel.app">drugiq.vercel.app</a><br>
+      Intended use: Research brief for downstream workflow. Not for clinical use.
+    </div>
+    ${clone.innerHTML}
+  </body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
+}
+
+function exportCopy(id) {
+  const { data, params, sources } = lastResult;
+  if (!data) return;
+  const t = T[id];
+  const lines = [
+    `# DrugIQ — ${t?.name || id}`,
+    `Generated: ${new Date().toISOString()}`,
+    `Source: https://drugiq.vercel.app`,
+    '',
+    `## Input`,
+    ...Object.entries(params || {}).map(([k, v]) => `- ${k}: ${v}`),
+    '',
+    `## Result Summary`,
+    JSON.stringify(data, null, 2).slice(0, 1500),
+    '',
+    `## Sources (${(sources || []).length})`,
+    ...(sources || []).map(s => `[${s.id}] ${s.tag} — ${s.label}${s.url ? ' — ' + s.url : ''}`)
+  ];
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = event.target;
+    const original = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+}
+
 function render(id,data,p){
   const map={scisynth:rSci,targetscope:rTarget,bindpredict:rBind,biosignal:rBio,repurposerx:rRepurpose,trialmatch:rTrial,alphamissense:rAM,molprofile:rMol};
-  return(map[id]||(()=>`<div class="rcard"><pre>${JSON.stringify(data,null,2)}</pre></div>`))(data,p);
+  const sources = buildSources(id, data);
+  lastResult = { id, data, params: p, sources };
+  const fn = map[id];
+  if (!fn) return `<div class="rcard"><pre>${JSON.stringify(data,null,2)}</pre></div>`;
+  return fn(data, p);
 }
 
 function hcta(id,data){
@@ -608,7 +957,7 @@ function rSci(d){
   if(d.error)return eHTML(d.error);
   const v=d.verdict||'Unknown',c=d.confidence||'Medium',sum=d.summary||'',finds=d.keyFindings||d.key_findings||[],con=d.consensus||'',gaps=d.gaps||'';
   const pct=c==='High'?88:c==='Medium'?55:28;
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">SciSynth — Evidence Synthesis</span><span class="badge ${vc(v)}">${v}</span></div><div class="mrow"><span class="mi">Confidence: <span>${c}</span></span></div><div class="cbar-row"><span class="cbar-lbl">Confidence</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${cc(pct)}"></div></div><span class="cbar-val">${c}</span></div>${sum?`<p class="rtxt">${sum}</p>`:''}${finds.length?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Findings</p>${finds.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}`:''}${con?`<div class="fi" style="margin-top:8px;border-color:rgba(74,180,100,.2)"><span class="finum" style="color:var(--green)">CON</span><span class="fitxt">${con}</span></div>`:''}${gaps?`<div class="fi" style="margin-top:4px;border-color:rgba(212,168,67,.2)"><span class="finum" style="color:var(--amber)">GAP</span><span class="fitxt">${gaps}</span></div>`:''}${hcta('scisynth',d)}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">SciSynth — Evidence Synthesis</span><span class="badge ${vc(v)}">${v}</span></div><div class="mrow"><span class="mi">Confidence: <span>${c}</span></span></div><div class="cbar-row"><span class="cbar-lbl">Confidence</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${cc(pct)}"></div></div><span class="cbar-val">${c}</span></div>${sum?`<p class="rtxt">${sum}</p>`:''}${finds.length?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Findings</p>${finds.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}`:''}${con?`<div class="fi" style="margin-top:8px;border-color:rgba(74,180,100,.2)"><span class="finum" style="color:var(--green)">CON</span><span class="fitxt">${con}</span></div>`:''}${gaps?`<div class="fi" style="margin-top:4px;border-color:rgba(212,168,67,.2)"><span class="finum" style="color:var(--amber)">GAP</span><span class="fitxt">${gaps}</span></div>`:''}${hcta('scisynth',d)}${sourcesPanel(buildSources('scisynth',d))}${exportBar('scisynth')}</div>`;
 }
 
 function rTarget(d,p){
@@ -617,7 +966,7 @@ function rTarget(d,p){
   if(!ts.length)return eHTML('No targets returned. Try canonical disease name (e.g. "systemic lupus erythematosus").', true);
   const trows=ts.slice(0,10).map((t,i)=>{const g=t.symbol||t.name||'?',rat=t.rationale||t.pathway||'',pri=t.priority||'',pc=pri==='High'?'var(--green)':pri==='Medium'?'var(--amber)':'var(--text3)';return`<div class="trow"><span class="tr">${String(i+1).padStart(2,'0')}</span><span class="tg">${g}</span><span class="td">${rat}</span><span style="font-family:var(--mono);font-size:10px;color:${pc};padding:2px 6px;background:rgba(255,255,255,.04);border-radius:3px">${pri}</span></div>`;}).join('');
   const pwHTML=pws.length?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">${pws.map(pw=>`<span class="tag" style="color:var(--blue)">${pw}</span>`).join('')}</div>`:'';
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">TargetScope — Ranked Drug Targets</span><span class="badge ok">${ts.length} Targets Found</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${trows}${pwHTML}${hcta('targetscope',d)}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">TargetScope — Ranked Drug Targets</span><span class="badge ok">${ts.length} Targets Found</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${trows}${pwHTML}${hcta('targetscope',d)}${sourcesPanel(buildSources('targetscope',d))}${exportBar('targetscope')}</div>`;
 }
 
 function rBind(d,p){
@@ -627,7 +976,7 @@ function rBind(d,p){
   const intHTML=ints.map((x,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${x}</span></div>`).join('');
   const afHTML=af?`<div style="background:rgba(91,155,212,.07);border:1px solid rgba(91,155,212,.2);border-radius:6px;padding:12px;margin-top:12px" id="af-bp-panel"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="afbadge">🧬 AlphaFold DB</span><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${af.uniprot_id||''}</span></div><div class="plain" style="font-size:12px;color:var(--text2);margin-bottom:8px">Google DeepMind predicted this protein's 3D shape. pLDDT is the confidence score — higher is better.</div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${af.plddt?`<div><div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:2px">pLDDT</div><div style="font-family:var(--mono);font-size:16px;color:var(--blue);font-weight:500">${typeof af.plddt==='number'?af.plddt.toFixed(1):af.plddt}</div><div style="font-size:10px;color:var(--text3)">${af.plddt>=90?'Very high':af.plddt>=70?'Confident':'Low'}</div></div>`:''} <button class="show-3d-btn" onclick="show3DViewer('bp','${af.uniprot_id||''}','${af.pdbUrl||''}','${p.target||''}')">🧬 View 3D Structure</button> ${af.entryId?`<a href="https://alphafold.ebi.ac.uk/entry/${af.uniprot_id}" target="_blank" style="font-family:var(--mono);font-size:10px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:5px 10px;border-radius:4px">AlphaFold DB ↗</a>`:''}</div><div id="viewer-bp-container"></div></div>`:'';
   const ins=`<div class="insight plain"><strong>What does this mean?</strong> A "${aff}" binding affinity means ${aff==='Strong'?'the drug fits the protein very well — a promising candidate.':aff==='Moderate'?'some interaction exists — may need optimisation.':'the drug is unlikely to work on this protein.'} Confidence: ${pct}%.</div>`;
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">BindPredict — Binding Prediction</span><span class="badge ${avc}">${aff}</span></div><div class="mrow"><span class="mi">Target: <span>${p.target}</span></span><span class="mi">Compound: <span>${p.compound}</span></span><span class="mi">Sources: <span>UniProt · ChEMBL · AlphaFold</span></span></div>${ins}<div class="cbar-row"><span class="cbar-lbl">Confidence</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${cc(pct)}"></div></div><span class="cbar-val">${pct}%</span></div>${mech?`<p class="rtxt">${mech}</p>`:''}${intHTML?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Interactions</p>${intHTML}`:''}${dg?`<div class="fi" style="margin-top:8px;border-color:rgba(74,180,100,.2)"><span class="finum" style="color:var(--green)">DRUGG</span><span class="fitxt"><strong style="color:var(--green)">${dg}</strong> — ${dgr}</span></div>`:''}${clin?`<div class="fi" style="margin-top:4px"><span class="finum">CLIN</span><span class="fitxt">${clin}</span></div>`:''}${bnd.length?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Similar binders:</span>${bnd.map(b=>`<span class="tag">${b}</span>`).join('')}</div>`:''}${afHTML}${lim?`<p style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">${lim}</p>`:''}${hcta('bindpredict',d)}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">BindPredict — Binding Prediction</span><span class="badge ${avc}">${aff}</span></div><div class="mrow"><span class="mi">Target: <span>${p.target}</span></span><span class="mi">Compound: <span>${p.compound}</span></span><span class="mi">Sources: <span>UniProt · ChEMBL · AlphaFold</span></span></div>${ins}<div class="cbar-row"><span class="cbar-lbl">Confidence</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${cc(pct)}"></div></div><span class="cbar-val">${pct}%</span></div>${mech?`<p class="rtxt">${mech}</p>`:''}${intHTML?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Interactions</p>${intHTML}`:''}${dg?`<div class="fi" style="margin-top:8px;border-color:rgba(74,180,100,.2)"><span class="finum" style="color:var(--green)">DRUGG</span><span class="fitxt"><strong style="color:var(--green)">${dg}</strong> — ${dgr}</span></div>`:''}${clin?`<div class="fi" style="margin-top:4px"><span class="finum">CLIN</span><span class="fitxt">${clin}</span></div>`:''}${bnd.length?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">Similar binders:</span>${bnd.map(b=>`<span class="tag">${b}</span>`).join('')}</div>`:''}${afHTML}${lim?`<p style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">${lim}</p>`:''}${hcta('bindpredict',d)}${sourcesPanel(buildSources('bindpredict',d))}${exportBar('bindpredict')}</div>`;
 }
 
 function rBio(d,p){
@@ -636,7 +985,7 @@ function rBio(d,p){
   if(!bms.length)return eHTML('No biomarkers returned. Try a more specific disease name.',true);
   const bmH=bms.map(b=>{const val=b.clinical_value||'Medium',vc2=val==='High'?'var(--green)':val==='Medium'?'var(--amber)':'var(--text3)',st=b.current_status||'',sc=st==='Validated'?'ok':st==='Emerging'?'warn':'bad';return`<div class="bmc"><p class="bmn">${b.name||'?'}</p><p style="font-size:11px;color:var(--text2);margin-bottom:6px">${b.type||''} · ${b.role||''}</p><span class="badge ${sc}" style="font-size:10px;padding:2px 8px">${st}</span><span style="font-family:var(--mono);font-size:10px;color:${vc2};margin-left:6px">Value: ${val}</span><p style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">${b.rationale||''}</p>${b.specimen?`<p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px">Specimen: ${b.specimen} · Assay: ${b.assay_type||'N/A'}</p>`:''}</div>`;}).join('');
   const panH=panel?`<div style="margin-top:1rem;background:var(--bg3);border:1px solid rgba(74,180,100,.2);border-radius:6px;padding:12px"><p style="font-family:var(--mono);font-size:10px;color:var(--green);margin-bottom:6px">SUGGESTED PANEL: ${panel.name||''}</p><div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${(panel.components||[]).map(c=>`<span class="tag">${c}</span>`).join('')}</div><p style="font-size:11px;color:var(--text2)">${panel.rationale||''}</p></div>`:'';
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">BioSignal — Biomarker Panel</span><span class="badge ok">${bms.length} Candidates${eg?' · Grade '+eg:''}</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Type: <span>${p.biomarker_type}</span></span><span class="mi">Sources: <span>PubMed · DisGeNET</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}<div class="bmgrid">${bmH}</div>${panH}${ch?`<p style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">${ch}</p>`:''}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">BioSignal — Biomarker Panel</span><span class="badge ok">${bms.length} Candidates${eg?' · Grade '+eg:''}</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Type: <span>${p.biomarker_type}</span></span><span class="mi">Sources: <span>PubMed · DisGeNET</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}<div class="bmgrid">${bmH}</div>${panH}${ch?`<p style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">${ch}</p>`:''}${sourcesPanel(buildSources('biosignal',d))}${exportBar('biosignal')}</div>`;
 }
 
 function rRepurpose(d,p){
@@ -644,7 +993,7 @@ function rRepurpose(d,p){
   const cs=d.repurposing_candidates||[],sum=d.disease_mechanism_summary||'',best=d.best_opportunity||'',adv=d.time_cost_advantage||'';
   if(!cs.length)return eHTML('No repurposing candidates found. Try a different disease name.',true);
   const cH=cs.slice(0,8).map((c,i)=>{const sc=parseInt(c.repurposing_score||0),pct=Math.min(100,sc),ec=c.evidence_strength==='Strong'?'var(--green)':c.evidence_strength==='Moderate'?'var(--amber)':'var(--text3)';return`<div class="trow" style="align-items:flex-start;padding:12px 14px"><span class="tr" style="padding-top:2px">${String(i+1).padStart(2,'0')}</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="tg" style="color:var(--teal)">${c.drug_name||'?'}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${c.drug_class||''}</span></div><p style="font-size:11px;color:var(--text3);margin-bottom:3px">Currently: ${c.current_indication||''}</p><p style="font-size:12px;color:var(--text2);line-height:1.5">${c.repurposing_rationale||''}</p>${c.development_stage?`<p style="font-family:var(--mono);font-size:10px;color:var(--blue);margin-top:3px">${c.development_stage}</p>`:''}</div><div style="text-align:right;min-width:70px"><div class="sbw" style="width:70px;margin-left:auto;margin-bottom:3px"><div class="sb" style="width:${pct}%;background:var(--teal)"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${sc}</span><br><span style="font-family:var(--mono);font-size:9px;color:${ec}">${c.evidence_strength||''}</span></div></div>`;}).join('');
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">RepurposeRx — Repurposing Candidates</span><span class="badge ok">${cs.length} Candidates</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · ChEMBL · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${cH}${best?`<div class="fi" style="margin-top:10px;border-color:rgba(69,179,162,.2)"><span class="finum" style="color:var(--teal)">BEST</span><span class="fitxt">${best}</span></div>`:''}${adv?`<div class="fi" style="margin-top:4px"><span class="finum">TIME</span><span class="fitxt">${adv}</span></div>`:''}${hcta('repurposerx',d)}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">RepurposeRx — Repurposing Candidates</span><span class="badge ok">${cs.length} Candidates</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · ChEMBL · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${cH}${best?`<div class="fi" style="margin-top:10px;border-color:rgba(69,179,162,.2)"><span class="finum" style="color:var(--teal)">BEST</span><span class="fitxt">${best}</span></div>`:''}${adv?`<div class="fi" style="margin-top:4px"><span class="finum">TIME</span><span class="fitxt">${adv}</span></div>`:''}${hcta('repurposerx',d)}${sourcesPanel(buildSources('repurposerx',d))}${exportBar('repurposerx')}</div>`;
 }
 
 function rTrial(d,p){
@@ -653,7 +1002,7 @@ function rTrial(d,p){
   const ms=d.matches||[];
   if(!ms.length)return eHTML('No trial matches. Try broadening the patient profile.',true);
   const tH=ms.map(m=>{const tr=m.trial||{},mc=m.match==='Strong Match'?'var(--green)':m.match==='Possible Match'?'var(--amber)':'var(--text3)';return`<div class="trc"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><p class="trid">${m.nct_id||tr.nct_id||''}</p><span style="font-family:var(--mono);font-size:11px;color:${mc}">${m.match||''} · ${m.score||0}</span></div><p class="trtl">${tr.title||'Unknown Trial'}</p><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-family:var(--mono);font-size:10px;color:var(--text3)">${tr.phase?`<span>Phase: <span style="color:var(--text2)">${tr.phase}</span></span>`:''} ${tr.sponsor?`<span>Sponsor: <span style="color:var(--text2)">${tr.sponsor}</span></span>`:''} ${(tr.locations||[]).length?`<span>Sites: <span style="color:var(--text2)">${tr.locations.slice(0,2).join(' · ')}</span></span>`:''}</div>${m.recommendation?`<p style="font-size:12px;color:var(--text2);margin-bottom:6px">${m.recommendation}</p>`:''} ${(m.reasons||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px">${m.reasons.map(r=>`<span style="font-size:11px;color:var(--green);background:rgba(74,180,100,.08);padding:2px 8px;border-radius:3px">+ ${r}</span>`).join('')}</div>`:''} ${(m.concerns||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${m.concerns.map(c=>`<span style="font-size:11px;color:var(--amber);background:rgba(212,168,67,.08);padding:2px 8px;border-radius:3px">⚠ ${c}</span>`).join('')}</div>`:''}</div>`;}).join('');
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">TrialMatch — Clinical Trial Matches</span><span class="badge ok">${ms.length} Matches</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span>${p.age?`<span class="mi">Age: <span>${p.age}</span></span>`:''} ${p.gender?`<span class="mi">Gender: <span>${p.gender}</span></span>`:''}</div>${tH}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">TrialMatch — Clinical Trial Matches</span><span class="badge ok">${ms.length} Matches</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span>${p.age?`<span class="mi">Age: <span>${p.age}</span></span>`:''} ${p.gender?`<span class="mi">Gender: <span>${p.gender}</span></span>`:''}</div>${tH}${sourcesPanel(buildSources('trialmatch',d))}${exportBar('trialmatch')}</div>`;
 }
 
 function rAM(d){
@@ -666,7 +1015,7 @@ function rAM(d){
   const afH=af?`<div style="background:rgba(91,155,212,.07);border:1px solid rgba(91,155,212,.2);border-radius:6px;padding:12px;margin-bottom:12px" id="af-am-panel"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span class="afbadge">🧬 AlphaFold Structure</span><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${af.uniprot_id}</span></div><div class="plain" style="font-size:12px;color:var(--text2);margin-bottom:8px">Google DeepMind predicted the 3D shape of ${gene}. Click below to see exactly where this mutation sits in the protein structure.</div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="show-3d-btn" onclick="show3DViewer('am','${af.uniprot_id}','${af.pdbUrl||''}','${gene}',${hgvsP?parseInt(variant.match(/\\d+/)?.[0]||0):0})">🧬 View 3D Structure${hgvsP?' + Mutation':''}</button><a href="https://alphafold.ebi.ac.uk/entry/${af.uniprot_id}" target="_blank" style="font-family:var(--mono);font-size:10px;color:var(--text3);text-decoration:none;border:1px solid var(--border);padding:5px 10px;border-radius:4px">AlphaFold DB ↗</a></div><div id="viewer-am-container"></div></div>`:'';
   const sy=synthesis||{},ss=sy.summary||'',sf=sy.keyFindings||[];
   const fH=sf.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('');
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">AlphaMissense — Variant Pathogenicity</span><span class="badge ${avc}">${lbl}</span></div><div class="mrow"><span class="mi">Gene: <span>${gene}</span></span><span class="mi">Variant: <span>${variant}${hgvsP?' (p.'+hgvsP+')':''}</span></span>${disease_context?`<span class="mi">Context: <span>${disease_context}</span></span>`:''}<span class="mi">Sources: <span>Ensembl VEP · AlphaMissense · AlphaFold</span></span></div><div class="insight plain">${pe}</div>${score!==null?`<div style="margin-bottom:16px"><div class="cbar-row"><span class="cbar-lbl">AM Score</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${bc}"></div></div><span class="cbar-val">${score.toFixed(3)}</span></div><div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text3);padding:0 0 0 75px;margin-top:2px"><span style="color:var(--green)">Benign &lt;0.34</span><span style="color:var(--amber)">Ambiguous 0.34–0.56</span><span style="color:var(--red)">Pathogenic &gt;0.56</span></div></div>`:`<div class="fi" style="margin-bottom:12px;border-color:rgba(212,168,67,.2)"><span class="finum" style="color:var(--amber)">INFO</span><span class="fitxt">Score not retrieved. Try: <code style="font-family:var(--mono);font-size:11px;color:var(--green)">R175H</code></span></div>`}${ensGene?.description?`<div class="fi" style="margin-bottom:12px"><span class="finum">GENE</span><span class="fitxt">${ensGene.description}</span></div>`:''}${afH}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Clinical Interpretation</p><p class="rtxt">${ss}</p>`:''}${fH?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Points</p>${fH}`:''}${hcta('alphamissense',d)}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">AlphaMissense — Variant Pathogenicity</span><span class="badge ${avc}">${lbl}</span></div><div class="mrow"><span class="mi">Gene: <span>${gene}</span></span><span class="mi">Variant: <span>${variant}${hgvsP?' (p.'+hgvsP+')':''}</span></span>${disease_context?`<span class="mi">Context: <span>${disease_context}</span></span>`:''}<span class="mi">Sources: <span>Ensembl VEP · AlphaMissense · AlphaFold</span></span></div><div class="insight plain">${pe}</div>${score!==null?`<div style="margin-bottom:16px"><div class="cbar-row"><span class="cbar-lbl">AM Score</span><div class="cbar-wrap"><div class="cbar" style="width:${pct}%;background:${bc}"></div></div><span class="cbar-val">${score.toFixed(3)}</span></div><div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text3);padding:0 0 0 75px;margin-top:2px"><span style="color:var(--green)">Benign &lt;0.34</span><span style="color:var(--amber)">Ambiguous 0.34–0.56</span><span style="color:var(--red)">Pathogenic &gt;0.56</span></div></div>`:`<div class="fi" style="margin-bottom:12px;border-color:rgba(212,168,67,.2)"><span class="finum" style="color:var(--amber)">INFO</span><span class="fitxt">Score not retrieved. Try: <code style="font-family:var(--mono);font-size:11px;color:var(--green)">R175H</code></span></div>`}${ensGene?.description?`<div class="fi" style="margin-bottom:12px"><span class="finum">GENE</span><span class="fitxt">${ensGene.description}</span></div>`:''}${afH}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Clinical Interpretation</p><p class="rtxt">${ss}</p>`:''}${fH?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">Key Points</p>${fH}`:''}${hcta('alphamissense',d)}${sourcesPanel(buildSources('alphamissense',d))}${exportBar('alphamissense')}</div>`;
 }
 
 function rMol(d,p){
@@ -679,7 +1028,7 @@ function rMol(d,p){
   const mH=mets.map(m=>`<div class="mc ${m.p?'':'fail'}"><div class="mc-lbl">${m.l}</div><div class="mc-val">${m.v}<span class="mc-unit"> ${m.u}</span></div><div class="mc-bw"><div class="mc-b" style="width:${Math.round(m.s)}%;background:${m.p?'var(--green)':'var(--amber)'}"></div></div><div class="mc-s" style="color:${m.p?'var(--green)':'var(--amber)'}">${m.p?'✓':'!'}</div></div>`).join('');
   const pi=`<div class="insight plain"><strong>What does this mean?</strong> This checks whether <strong>${compound}</strong> has the properties a drug needs to survive in the body. ${lipinski.passes?'It <strong style="color:var(--green)">passes</strong> the standard drug-likeness test — should be absorbable by mouth.':'It has <strong style="color:var(--amber)">'+(lipinski.violations.length)+' violation(s)</strong>: '+lipinski.violations.join(', ')+'.'} ${bbb?' It may <strong>cross the blood-brain barrier</strong>.':''} ${mp===4?' Already <strong style="color:var(--green)">FDA/EMA approved</strong>.':mp>=1?' Reached <strong>clinical Phase '+mp+'</strong>.':''}</div>`;
   const sy=synthesis||{},ss=sy.summary||'',sf=sy.keyFindings||[];
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">MolProfile — Drug Viability Report</span><span class="badge ${ovc}">${ol}</span></div><div class="mrow">${cid?`<span class="mi">PubChem: <span><a href="https://pubchem.ncbi.nlm.nih.gov/compound/${cid}" target="_blank" style="color:var(--blue)">CID ${cid} ↗</a></span></span>`:''} ${chembl?.chembl_id?`<span class="mi">ChEMBL: <span><a href="https://www.ebi.ac.uk/chembl/compound_report_card/${chembl.chembl_id}/" target="_blank" style="color:var(--blue)">${chembl.chembl_id} ↗</a></span></span>`:''} ${pl?`<span class="mi">Stage: <span style="color:${pc}">${pl}</span></span>`:''}</div>${pi}<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:${lipinski.passes?'rgba(74,180,100,.06)':'rgba(212,168,67,.06)'};border:1px solid ${lipinski.passes?'rgba(74,180,100,.2)':'rgba(212,168,67,.2)'};border-radius:6px"><div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">LIPINSKI RULE OF FIVE</div><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:${lipinski.passes?'var(--green)':'var(--amber)'}">${lipinski.passes?'✓ Passes':lipinski.violations.length+' violation(s)'}</div>${lipinski.violations.length?`<div style="font-size:11px;color:var(--amber);margin-top:2px">${lipinski.violations.join(' · ')}</div>`:''}</div><div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">VEBER ORAL</div><div style="font-family:var(--mono);font-size:13px;color:${veber.passes?'var(--green)':'var(--amber)'}">${veber.passes?'✓ Passes':'! Fails'}</div></div><div style="margin-left:16px;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">BBB PENETRATION</div><div style="font-family:var(--mono);font-size:13px;color:${bbb?'var(--teal)':'var(--text3)'}">${bbb?'~ Possible':'~ Unlikely'}</div></div></div><div class="mgrid">${mH}</div>${chembl?.indication||chembl?.drug_type?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${chembl?.indication?`<div class="fi" style="flex:1;min-width:180px"><span class="finum">IND</span><span class="fitxt">${chembl.indication}</span></div>`:''} ${chembl?.drug_type?`<div class="fi" style="flex:1;min-width:120px"><span class="finum">TYPE</span><span class="fitxt">${chembl.drug_type}</span></div>`:''} ${chembl?.oral!=null?`<div class="fi" style="flex:1;min-width:100px"><span class="finum">ORAL</span><span class="fitxt" style="color:${chembl.oral?'var(--green)':'var(--red)'}">${chembl.oral?'Yes':'No'}</span></div>`:''}</div>`:''}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Drug Viability Interpretation</p><p class="rtxt">${ss}</p>`:''}${sf.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}<div style="margin-top:12px;padding:10px;background:rgba(74,180,100,.04);border:1px solid rgba(74,180,100,.12);border-radius:6px;font-size:11px;color:var(--text3);line-height:1.5">Data from PubChem (NIH) and ChEMBL (EMBL-EBI). Equivalent to SwissADME profiling. For research use only.</div>${hcta('molprofile',d)}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">MolProfile — Drug Viability Report</span><span class="badge ${ovc}">${ol}</span></div><div class="mrow">${cid?`<span class="mi">PubChem: <span><a href="https://pubchem.ncbi.nlm.nih.gov/compound/${cid}" target="_blank" style="color:var(--blue)">CID ${cid} ↗</a></span></span>`:''} ${chembl?.chembl_id?`<span class="mi">ChEMBL: <span><a href="https://www.ebi.ac.uk/chembl/compound_report_card/${chembl.chembl_id}/" target="_blank" style="color:var(--blue)">${chembl.chembl_id} ↗</a></span></span>`:''} ${pl?`<span class="mi">Stage: <span style="color:${pc}">${pl}</span></span>`:''}</div>${pi}<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:${lipinski.passes?'rgba(74,180,100,.06)':'rgba(212,168,67,.06)'};border:1px solid ${lipinski.passes?'rgba(74,180,100,.2)':'rgba(212,168,67,.2)'};border-radius:6px"><div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">LIPINSKI RULE OF FIVE</div><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:${lipinski.passes?'var(--green)':'var(--amber)'}">${lipinski.passes?'✓ Passes':lipinski.violations.length+' violation(s)'}</div>${lipinski.violations.length?`<div style="font-size:11px;color:var(--amber);margin-top:2px">${lipinski.violations.join(' · ')}</div>`:''}</div><div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">VEBER ORAL</div><div style="font-family:var(--mono);font-size:13px;color:${veber.passes?'var(--green)':'var(--amber)'}">${veber.passes?'✓ Passes':'! Fails'}</div></div><div style="margin-left:16px;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">BBB PENETRATION</div><div style="font-family:var(--mono);font-size:13px;color:${bbb?'var(--teal)':'var(--text3)'}">${bbb?'~ Possible':'~ Unlikely'}</div></div></div><div class="mgrid">${mH}</div>${chembl?.indication||chembl?.drug_type?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${chembl?.indication?`<div class="fi" style="flex:1;min-width:180px"><span class="finum">IND</span><span class="fitxt">${chembl.indication}</span></div>`:''} ${chembl?.drug_type?`<div class="fi" style="flex:1;min-width:120px"><span class="finum">TYPE</span><span class="fitxt">${chembl.drug_type}</span></div>`:''} ${chembl?.oral!=null?`<div class="fi" style="flex:1;min-width:100px"><span class="finum">ORAL</span><span class="fitxt" style="color:${chembl.oral?'var(--green)':'var(--red)'}">${chembl.oral?'Yes':'No'}</span></div>`:''}</div>`:''}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Drug Viability Interpretation</p><p class="rtxt">${ss}</p>`:''}${sf.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}<div style="margin-top:12px;padding:10px;background:rgba(74,180,100,.04);border:1px solid rgba(74,180,100,.12);border-radius:6px;font-size:11px;color:var(--text3);line-height:1.5">Data from PubChem (NIH) and ChEMBL (EMBL-EBI). Equivalent to SwissADME profiling. For research use only.</div>${hcta('molprofile',d)}${sourcesPanel(buildSources('molprofile',d))}${exportBar('molprofile')}</div>`;
 }
 
 function eHTML(msg,noRes){

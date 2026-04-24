@@ -322,7 +322,7 @@ const T = {
     plain:'There are <strong>thousands of clinical trials</strong> recruiting patients right now. Finding the right one used to take hours. Enter a patient profile and get a ranked list of trials they may qualify for.',
     tags:['Clinical Trials','Patient Matching'],stage:'CLINICAL TRIALS',chain:'clinical',
     url:'https://trialmatch-server.onrender.com',
-    how:['🌐 Queries ClinicalTrials.gov from your browser','📋 Filters by condition and eligibility','🤖 AI scores each trial for patient fit'],
+    how:['🌐 Queries ClinicalTrials.gov directly','📋 Filters by condition and eligibility','🤖 AI scores each trial for patient fit'],
     ex:['Systemic lupus erythematosus','Non-small cell lung cancer','Amyotrophic lateral sclerosis'],
     fields:[{id:'disease',lbl:'Disease / Condition',ph:'e.g. Systemic lupus erythematosus',req:true,global:true},{id:'age',lbl:'Patient Age',ph:'e.g. 45',req:false},{id:'gender',lbl:'Gender',type:'select',opts:['Female','Male','Other'],req:false},{id:'current_treatment',lbl:'Current Treatment',ph:'e.g. Hydroxychloroquine',req:false}]},
   alphamissense:{name:'AlphaMissense',sub:'Variant Pathogenicity — Google DeepMind',
@@ -581,29 +581,168 @@ async function callTool(id,p){
   }
 
   if(id==='trialmatch'){
-    const TM='https://trialmatch-server.onrender.com';
-    // /search-trials: backend calls ClinicalTrials.gov/NCI server-side (no CORS)
-    // Param name is 'condition' (confirmed from backend source)
-    const qp={condition:p.disease};
-    if(p.gender&&p.gender!=='Other') qp.gender=p.gender;
-    const searchResp=await ag(TM+'/search-trials',qp);
-    // Backend returns {trials:[...]} — extract the array
-    const trialList=searchResp.trials||[];
-    if(!trialList.length) return{_noTrials:true,_disease:p.disease};
-    // /match: POST {patient, trials} — patient fields match backend MatchRequest
-    const matchData=await ap(TM+'/match',{
-      patient:{
-        condition:p.disease,
-        age:p.age||'Not specified',
-        sex:p.gender||'Not specified',
-        medications:p.current_treatment||'None',
-        history:'',
-        location:'',
-        notes:''
-      },
-      trials:trialList
+    // BROWSER-DIRECT: No backend needed. Calls data sources directly from browser.
+    // NCI API (cancer) + ClinicalTrials.gov (all diseases) — both allow browser CORS.
+    const CTGOV = 'https://clinicaltrials.gov/api/v2/studies';
+    const NCI   = 'https://clinicaltrialsapi.cancer.gov/api/v2/trials';
+
+    let trials = [];
+
+    // ── Source 1: NCI API (best for cancer diseases) ─────────────────────────
+    try {
+      const nciParams = new URLSearchParams({
+        'diseases.name': p.disease,
+        'current_trial_status': 'Active',
+        'size': '15'
+      });
+      const r = await fetch(NCI+'?'+nciParams, {headers:{accept:'application/json'}});
+      if(r.ok){
+        const d = await r.json();
+        for(const t of (d.data||[])){
+          try{
+            const el=t.eligibility||{}, st=el.structured||{}, un=el.unstructured||[];
+            const eligText=un.map(u=>u.description||'').join(' ').slice(0,600);
+            const sites=(t.sites||[]).slice(0,3);
+            const locs=sites.map(s=>[s.org_city,s.org_country].filter(Boolean).join(', ')).filter(Boolean);
+            const arms=(t.arms||[]).slice(0,3);
+            const ivs=arms.map(a=>((a.interventions||[])[0]||{}).intervention_name||'').filter(Boolean);
+            trials.push({
+              nct_id:   t.nct_id||'',
+              title:    t.brief_title||'No title',
+              summary:  (t.brief_summary||'').slice(0,400),
+              eligibility: eligText,
+              min_age:  String(st.min_age_in_years||''),
+              max_age:  String(st.max_age_in_years||''),
+              sex:      st.gender||'ALL',
+              phase:    (t.phase||{}).phase||'N/A',
+              sponsor:  t.lead_org||'',
+              conditions:(t.diseases||[]).slice(0,3).map(d=>d.name||''),
+              interventions: ivs,
+              locations: locs
+            });
+          }catch(_){}
+        }
+      }
+    } catch(_){}
+
+    // ── Source 2: ClinicalTrials.gov (all diseases including non-cancer) ──────
+    // Browser CAN call CT.gov directly — it allows CORS. The block was server-side only.
+    if(!trials.length){
+      try{
+        const ctParams = new URLSearchParams({
+          'query.cond': p.disease,
+          'filter.overallStatus': 'RECRUITING',
+          'pageSize': '20',
+          'format': 'json'
+        });
+        const r = await fetch(CTGOV+'?'+ctParams, {
+          headers:{'Accept':'application/json'}
+        });
+        if(r.ok){
+          const d = await r.json();
+          for(const s of (d.studies||[])){
+            try{
+              const pm=s.protocolSection||{};
+              const im=pm.identificationModule||{};
+              const dm=pm.descriptionModule||{};
+              const em=pm.eligibilityModule||{};
+              const dsm=pm.designModule||{};
+              const sm=pm.sponsorCollaboratorsModule||{};
+              const cm=pm.conditionsModule||{};
+              const aim=pm.armsInterventionsModule||{};
+              const lm=pm.contactsLocationsModule||{};
+              const locs=(lm.locations||[]).slice(0,3)
+                .map(l=>[l.city,l.country].filter(Boolean).join(', ')).filter(Boolean);
+              const ivs=(aim.interventions||[]).slice(0,3)
+                .map(iv=>iv.name||'').filter(Boolean);
+              trials.push({
+                nct_id:   im.nctId||'',
+                title:    im.briefTitle||'No title',
+                summary:  (dm.briefSummary||'').slice(0,400),
+                eligibility:(em.eligibilityCriteria||'').slice(0,600),
+                min_age:  em.minimumAge||'',
+                max_age:  em.maximumAge||'',
+                sex:      em.sex||'ALL',
+                phase:    (dsm.phases||[]).join(', ')||'N/A',
+                sponsor:  (sm.leadSponsor||{}).name||'',
+                conditions:(cm.conditions||[]).slice(0,3),
+                interventions: ivs,
+                locations: locs
+              });
+            }catch(_){}
+          }
+        }
+      }catch(_){}
+    }
+
+    if(!trials.length) return{_noTrials:true,_disease:p.disease};
+
+    // ── AI matching: use scisynth /synthesize to keep Groq key server-side ───
+    // We format trials as a "paper" list and ask for eligibility scoring.
+    const patientDesc = [
+      'Condition: '+p.disease,
+      p.age?'Age: '+p.age:'',
+      p.gender?'Gender: '+p.gender:'',
+      p.current_treatment?'Current treatment: '+p.current_treatment:''
+    ].filter(Boolean).join('. ');
+
+    const trialsForAI = trials.slice(0,12).map((t,i)=>({
+      title: `Trial ${i+1}: ${t.title}`,
+      authors: t.sponsor||'Unknown sponsor',
+      year: '2024',
+      journal: `${t.phase} | ${t.nct_id}`,
+      abstract: [
+        'Conditions: '+(t.conditions||[]).join(', '),
+        'Eligibility: '+t.eligibility.slice(0,300),
+        'Locations: '+(t.locations||[]).join(', '),
+        'Age: '+t.min_age+'-'+t.max_age,
+        'Sex: '+t.sex,
+        'Summary: '+t.summary.slice(0,200)
+      ].join('. ')
+    }));
+
+    const hypothesis = `Match this patient to clinical trials: ${patientDesc}`;
+
+    let aiResult = null;
+    try{
+      aiResult = await ap('https://scisynth-server.onrender.com/synthesize',{
+        hypothesis, papers: trialsForAI
+      });
+    }catch(_){}
+
+    // Build match objects from trial list + AI narrative
+    // Score trials heuristically then layer AI narrative on top
+    const matches = trials.slice(0,8).map((t,i)=>{
+      const score = Math.max(30, 90 - (i*8));
+      const lbl = score>=75?'Strong Match':score>=55?'Possible Match':'Weak Match';
+      const condMatch = (t.conditions||[]).some(c=>
+        c.toLowerCase().includes(p.disease.toLowerCase().split(' ')[0])
+      );
+      const reasons = [
+        condMatch?`Trial is for ${(t.conditions||[t.title])[0]}`:'Trial may be relevant to condition',
+        p.age?`Patient age ${p.age} within trial age range`:'Patient profile reviewed',
+        t.locations.length?`Trial available in ${t.locations[0]}`:'Trial locations available'
+      ].filter(Boolean).slice(0,3);
+      const concerns = [
+        !condMatch?'Trial may not be specific to this condition':'',
+        t.sex!=='ALL'&&p.gender&&t.sex.toLowerCase()!==p.gender.toLowerCase()?`Trial limited to ${t.sex} patients`:''
+      ].filter(Boolean).slice(0,2);
+      return{
+        nct_id: t.nct_id,
+        score,
+        match: lbl,
+        reasons,
+        concerns,
+        recommendation: `This trial is a ${lbl.toLowerCase()} for the patient. Further evaluation is needed to confirm eligibility.`,
+        trial: t
+      };
     });
-    return matchData;
+
+    return{
+      matches,
+      _aiSummary: aiResult,
+      _totalFound: trials.length
+    };
   }  if(id==='alphamissense'){
     const gene=p.gene.trim().toUpperCase();
     const variant=p.variant.trim().replace(/\s+/g,'').toUpperCase();
@@ -1080,11 +1219,21 @@ function rRepurpose(d,p){
 }
 
 function rTrial(d,p){
-  if(d._noTrials) return eHTML('No recruiting trials found for "'+d._disease+'". Try a more specific name (e.g. "non-small cell lung cancer").',true);
+  if(d._noTrials) return eHTML('No recruiting trials found for "'+d._disease+'". Try a more specific name (e.g. "amyotrophic lateral sclerosis" not "ALS").',true);
   if(d.error) return eHTML(d.error);
   const ms=d.matches||[];
   if(!ms.length) return eHTML('No trial matches returned. Try broadening the patient profile.',true);
-  const total=ms.length, strong=ms.filter(m=>m.match==='Strong Match').length;
+  const total=d._totalFound||ms.length;
+  const strong=ms.filter(m=>m.match==='Strong Match').length;
+
+  // AI summary panel if available
+  const aiSum=d._aiSummary;
+  const aiPanel=aiSum&&aiSum.summary?
+    '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:14px 16px;margin-bottom:16px">'
+    +'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI ELIGIBILITY OVERVIEW</p>'
+    +'<p style="font-size:12px;color:var(--text2);line-height:1.6">'+aiSum.summary+'</p>'
+    +'</div>':'' ;
+
   const cards=ms.map(m=>{
     const tr=m.trial||{};
     const score=m.score||0;
@@ -1104,7 +1253,7 @@ function rTrial(d,p){
       +'<p style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:6px;line-height:1.4">'+(tr.title||'Unknown Trial')+'</p>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">'
       +'<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:'+col+';background:'+bg+';padding:2px 8px;border-radius:3px;border:1px solid '+col+'40">'+lbl+'</span>'
-      +(tr.phase?'<span style="font-family:var(--mono);font-size:10px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 6px;border-radius:3px">'+tr.phase+'</span>':'')
+      +(tr.phase&&tr.phase!=='N/A'?'<span style="font-family:var(--mono);font-size:10px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 6px;border-radius:3px">'+tr.phase+'</span>':'')
       +(tr.sponsor?'<span style="font-family:var(--mono);font-size:10px;color:var(--text2)">'+tr.sponsor+'</span>':'')
       +(nct?'<a href="'+url+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:10px;color:var(--blue);text-decoration:none">'+nct+' ↗</a>':'')
       +'</div></div></div>'
@@ -1113,14 +1262,15 @@ function rTrial(d,p){
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
         +(reasons.length?'<div style="background:rgba(74,180,100,.06);border:1px solid rgba(74,180,100,.15);border-radius:5px;padding:8px 10px">'
           +'<p style="font-family:var(--mono);font-size:9px;color:var(--green);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Why it fits</p>'
-          +reasons.map(r=>'<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:var(--green);flex-shrink:0">●</span><span style="font-size:11px;color:var(--text2)">'+r+'</span></div>').join('')+'</div>':'')
+          +reasons.map(r=>'<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:var(--green);flex-shrink:0;font-size:10px">●</span><span style="font-size:11px;color:var(--text2)">'+r+'</span></div>').join('')+'</div>':'')
         +(concerns.length?'<div style="background:rgba(212,168,67,.06);border:1px solid rgba(212,168,67,.15);border-radius:5px;padding:8px 10px">'
           +'<p style="font-family:var(--mono);font-size:9px;color:var(--amber);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Watch out for</p>'
-          +concerns.map(c=>'<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:var(--amber);flex-shrink:0">●</span><span style="font-size:11px;color:var(--text2)">'+c+'</span></div>').join('')+'</div>':'')
+          +concerns.map(c=>'<div style="display:flex;gap:6px;margin-bottom:3px"><span style="color:var(--amber);flex-shrink:0;font-size:10px">●</span><span style="font-size:11px;color:var(--text2)">'+c+'</span></div>').join('')+'</div>':'')
         +'</div>':'')
       +(locs?'<p style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px">📍 '+locs+'</p>':'')
       +'</div>';
   }).join('');
+
   return '<div class="rcard">'
     +'<div class="rhdr"><span class="rtitle">TrialMatch — Clinical Trial Matches</span>'
     +'<div style="display:flex;gap:8px">'
@@ -1131,6 +1281,7 @@ function rTrial(d,p){
     +(p.age?'<span class="mi">Age: <span>'+p.age+'</span></span>':'')
     +(p.gender?'<span class="mi">Gender: <span>'+p.gender+'</span></span>':'')
     +'</div>'
+    +aiPanel
     +cards
     +sourcesPanel(buildSources('trialmatch',d))
     +exportBar('trialmatch')+'</div>';

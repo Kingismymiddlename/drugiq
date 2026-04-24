@@ -746,76 +746,97 @@ async function callTool(id,p){
   }  if(id==='alphamissense'){
     const gene=p.gene.trim().toUpperCase();
     const variant=p.variant.trim().replace(/\s+/g,'').toUpperCase();
-    const AA={A:'Ala',C:'Cys',D:'Asp',E:'Glu',F:'Phe',G:'Gly',H:'His',I:'Ile',K:'Lys',
-              L:'Leu',M:'Met',N:'Asn',P:'Pro',Q:'Gln',R:'Arg',S:'Ser',T:'Thr',
-              V:'Val',W:'Trp',Y:'Tyr'};
+    // Parse variant: G12C → ref=G, pos=12, alt=C
     const vm=variant.match(/^([A-Za-z])(\d+)([A-Za-z])$/);
-    const hgvsP=vm?(AA[vm[1].toUpperCase()]||vm[1])+vm[2]+(AA[vm[3].toUpperCase()]||vm[3]):null;
-    let ensGene=null,amScore=null,amClass=null,vepData=null,uniprotId=null,af=null;
-    const EBI={headers:{Accept:'application/json'}};
-    // Step 1: gene lookup
-    try{const r=await fetch('https://rest.ensembl.org/lookup/symbol/homo_sapiens/'+encodeURIComponent(gene)+'?content-type=application/json',EBI);if(r.ok)ensGene=await r.json();}catch(_){}
-    // Step 2: variant recoder — converts protein HGVS to genomic HGVS (needed for AM scores)
-    let genomicHgvs=null;
-    if(hgvsP){
+    const AA1to3={A:'Ala',C:'Cys',D:'Asp',E:'Glu',F:'Phe',G:'Gly',H:'His',I:'Ile',
+                  K:'Lys',L:'Leu',M:'Met',N:'Asn',P:'Pro',Q:'Gln',R:'Arg',S:'Ser',
+                  T:'Thr',V:'Val',W:'Trp',Y:'Tyr'};
+    const refAA  = vm ? vm[1].toUpperCase() : null;
+    const pos    = vm ? parseInt(vm[2])      : null;
+    const altAA  = vm ? vm[3].toUpperCase() : null;
+    const hgvsP  = vm ? (AA1to3[refAA]||refAA)+vm[2]+(AA1to3[altAA]||altAA) : null;
+    const EBI = {headers:{Accept:'application/json'}};
+
+    let ensGene=null, uniprotId=null, amScore=null, amClass=null, af=null, synthesis=null;
+
+    // Step 1: Gene symbol → Ensembl gene (for gene description)
+    try{
+      const r=await fetch('https://rest.ensembl.org/lookup/symbol/homo_sapiens/'
+        +encodeURIComponent(gene)+'?content-type=application/json', EBI);
+      if(r.ok) ensGene=await r.json();
+    }catch(_){}
+
+    // Step 2: Ensembl gene ID → UniProt accession
+    if(ensGene&&ensGene.id){
       try{
-        const r=await fetch('https://rest.ensembl.org/variant_recoder/human/'+encodeURIComponent(gene)+':p.'+hgvsP+'?content-type=application/json',EBI);
+        const r=await fetch('https://rest.ensembl.org/xrefs/id/'+ensGene.id
+          +'?content-type=application/json&external_db=Uniprot/SWISSPROT', EBI);
+        if(r.ok){const d=await r.json(); if(d&&d[0]) uniprotId=d[0].primary_id;}
+      }catch(_){}
+    }
+
+    // Step 3: AlphaFold DB variant API → AlphaMissense score
+    // endpoint: /api/variant/{uniprotId} returns scores for all positions
+    // Filter by position + alt amino acid
+    if(uniprotId&&pos&&altAA){
+      try{
+        const r=await fetch('https://alphafold.ebi.ac.uk/api/variant/'+uniprotId, EBI);
         if(r.ok){
           const d=await r.json();
-          const entry=Array.isArray(d)&&d[0]?d[0]:d;
-          for(const k of Object.keys(entry||{})){
-            if(entry[k]&&entry[k].hgvsg&&entry[k].hgvsg[0]){genomicHgvs=entry[k].hgvsg[0];break;}
-          }
-        }
-      }catch(_){}
-    }
-    // Step 3: VEP with genomic HGVS — this is what returns AlphaMissense scores
-    if(genomicHgvs){
-      try{
-        const r=await fetch('https://rest.ensembl.org/vep/human/hgvs/'+encodeURIComponent(genomicHgvs)+'?content-type=application/json&AlphaMissense=1&protein=1&canonical=1',EBI);
-        if(r.ok){
-          const a=await r.json();
-          if(Array.isArray(a)&&a[0]){
-            vepData=a[0];
-            for(const tc of(vepData.transcript_consequences||[])){
-              if(tc.alphamissense_score!==undefined){amScore=tc.alphamissense_score;amClass=tc.alphamissense_pathogenicity||null;break;}
+          // d is array of {residueNumber, wildType, variant, score, pathogenicity}
+          const variants=Array.isArray(d)?d:(d.variants||d.data||[]);
+          // Find the exact match: position + alt AA
+          const match=variants.find(v=>
+            v.residueNumber===pos && v.variant===altAA
+          );
+          if(match){
+            amScore=match.score??match.am_pathogenicity??null;
+            amClass=match.pathogenicity??match.am_class??null;
+            // Normalise class label
+            if(amScore!==null&&amClass===null){
+              amClass=amScore>0.564?'likely_pathogenic':amScore<0.34?'likely_benign':'ambiguous';
             }
           }
         }
       }catch(_){}
     }
-    // Step 4: fallback — try protein HGVS directly if recoder gave nothing
-    if(amScore===null&&hgvsP){
-      try{
-        const r=await fetch('https://rest.ensembl.org/vep/human/hgvs/'+encodeURIComponent(gene+':p.'+hgvsP)+'?content-type=application/json&AlphaMissense=1&protein=1&canonical=1',EBI);
-        if(r.ok){
-          const a=await r.json();
-          if(Array.isArray(a)&&a[0]){
-            vepData=vepData||a[0];
-            for(const tc of(a[0].transcript_consequences||[])){
-              if(tc.alphamissense_score!==undefined){amScore=tc.alphamissense_score;amClass=tc.alphamissense_pathogenicity||null;break;}
-            }
-          }
-        }
-      }catch(_){}
-    }
-    // Step 5: UniProt → AlphaFold
-    if(ensGene&&ensGene.id){
-      try{const r=await fetch('https://rest.ensembl.org/xrefs/id/'+ensGene.id+'?content-type=application/json&external_db=Uniprot/SWISSPROT',EBI);if(r.ok){const d=await r.json();if(d&&d[0])uniprotId=d[0].primary_id;}}catch(_){}
-    }
+
+    // Step 4: AlphaFold structure data
     if(uniprotId){
-      try{const r=await fetch('https://alphafold.ebi.ac.uk/api/prediction/'+uniprotId,EBI);if(r.ok){const d=await r.json();if(d&&d[0])af={uniprot_id:d[0].uniprotAccession,pdbUrl:d[0].pdbUrl,plddt:d[0].plddt,entryId:d[0].entryId};}}catch(_){}
+      try{
+        const r=await fetch('https://alphafold.ebi.ac.uk/api/prediction/'+uniprotId, EBI);
+        if(r.ok){const d=await r.json(); if(d&&d[0]) af={
+          uniprot_id:d[0].uniprotAccession,
+          pdbUrl:d[0].pdbUrl, plddt:d[0].plddt, entryId:d[0].entryId
+        };}
+      }catch(_){}
     }
-    // Step 6: AI synthesis via scisynth
-    let synthesis=null;
+
+    // Step 5: AI clinical interpretation via SciSynth
     try{
-      const sc=amScore!==null?'Score '+amScore.toFixed(3)+' → '+(amScore>0.564?'LIKELY PATHOGENIC':amScore<0.34?'LIKELY BENIGN':'AMBIGUOUS'):'Score not in Ensembl database for this variant';
-      const hyp='Pathogenicity assessment of '+gene+' '+variant+(amScore!==null&&amScore>0.564?' — likely pathogenic':'');
-      const paper={title:'AlphaMissense: '+gene+' '+variant,authors:'Cheng et al., Google DeepMind/EMBL-EBI',year:'2023',journal:'Science',
-        abstract:'Gene: '+gene+'. Variant: '+variant+(hgvsP?' (p.'+hgvsP+')':'')+'. '+sc+'. Gene: '+(ensGene&&ensGene.description?ensGene.description:'unknown')+'. Context: '+(p.disease_context||'not specified')+'.'};
-      synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{hypothesis:hyp,papers:[paper]});
+      const sc = amScore!==null
+        ? 'AlphaMissense score: '+amScore.toFixed(3)+' — '
+          +(amScore>0.564?'LIKELY PATHOGENIC':amScore<0.34?'LIKELY BENIGN':'AMBIGUOUS')
+        : 'AlphaMissense score not available for this specific variant';
+      const hyp='Clinical significance of '+gene+' '+variant+' missense variant'
+        +(amScore!==null&&amScore>0.564?' — likely pathogenic':'');
+      synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{
+        hypothesis: hyp,
+        papers:[{
+          title:'AlphaMissense variant analysis: '+gene+' '+variant,
+          authors:'Cheng et al., Google DeepMind / EMBL-EBI',
+          year:'2023', journal:'Science',
+          abstract:'Gene: '+gene+'. Variant: '+variant+(hgvsP?' (p.'+hgvsP+')':'')
+            +'. '+sc
+            +'. Gene function: '+(ensGene?.description||'not retrieved')
+            +'. UniProt: '+(uniprotId||'not retrieved')
+            +'. Disease context: '+(p.disease_context||'not specified')+'.'
+        }]
+      });
     }catch(_){}
-    return{gene,variant,hgvsP,amScore,amClass,vepData,alphafold:af,ensGene,synthesis,disease_context:p.disease_context};
+
+    return{gene,variant,hgvsP,amScore,amClass,alphafold:af,ensGene,synthesis,
+           disease_context:p.disease_context,uniprotId};
   }  if(id==='molprofile'){
     const compound=p.compound.trim();
     let cid=null,pubchem=null,chembl=null;

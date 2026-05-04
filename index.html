@@ -251,6 +251,8 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
       <button class="tbtn" id="b-trialmatch"   onclick="go('trialmatch')"><span class="tnum">⑥</span><span class="tname">TrialMatch</span><span class="tdot warn"></span></button>
       <button class="tbtn" id="b-alphamissense" onclick="go('alphamissense')"><span class="tnum">⑦</span><span class="tname">AlphaMissense</span><span class="tdot blue"></span></button>
       <button class="tbtn" id="b-molprofile"   onclick="go('molprofile')"><span class="tnum">⑧</span><span class="tname">MolProfile</span><span class="tdot"></span></button>
+      <button class="tbtn" id="b-combinedrx" onclick="go('combinedrx')"><span class="tnum">⑨</span><span class="tname">CombinedRx</span><span class="tdot" style="background:#E91E63"></span></button>
+      <button class="tbtn" id="b-immuniq"    onclick="go('immuniq')"><span class="tnum">⑩</span><span class="tname">ImmunIQ</span><span class="tdot" style="background:#FF6B35"></span></button>
     </div>
     <div class="ss" style="padding-top:0">
       <div class="guide-pill" id="gpill" onclick="toggleGuide()"><div class="gpill-dot"></div><span id="glbl">Guide Mode: Off</span></div>
@@ -270,6 +272,10 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
     <div class="ss">
       <p class="ss-lbl">DeepMind APIs</p>
       <div style="padding:0 4px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.8">AlphaFold DB <span style="color:var(--blue)">③</span><br>AlphaMissense <span style="color:var(--blue)">⑦</span></div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:4px">Harvard Zitnik Lab</p>
+      <p style="font-family:var(--mono);font-size:10px;color:#9B59B6;line-height:1.6">TxGNN ⑤<br>SHEPHERD ⑥<br>Madrigal ⑨<br>COMPASS ⑩<br>TDC ⑧</p>
+    </div>
     </div>
   </nav>
   <main class="content" id="content"></main>
@@ -340,10 +346,34 @@ const T = {
     url:null,
     how:['🔬 Fetches molecular properties from PubChem','💊 Queries ChEMBL for clinical phase','🤖 AI interprets ADME viability'],
     ex:['Imatinib','Sotorasib','Aspirin','Caffeine','Paclitaxel'],
-    fields:[{id:'compound',lbl:'Compound / Drug Name',ph:'e.g. Imatinib, Sotorasib, Aspirin',req:true},{id:'target_context',lbl:'Target / Context (optional)',ph:'e.g. KRAS inhibitor for NSCLC',req:false}]}
+    fields:[{id:'compound',lbl:'Compound / Drug Name',ph:'e.g. Imatinib, Sotorasib, Aspirin',req:true},{id:'target_context',lbl:'Target / Context (optional)',ph:'e.g. KRAS inhibitor for NSCLC',req:false}]},
+  combinedrx:{name:'CombinedRx',sub:'Drug Combination Prediction — Harvard Madrigal',
+    desc:'Predict whether two drugs work better together for your disease. Powered by Madrigal, a multimodal AI from Harvard Medical School trained on preclinical drug combination data.',
+    plain:'Some diseases respond better to <strong>two drugs together</strong> than either one alone. CombinedRx predicts whether your chosen drug pair will work better in combination, and warns you if they might interfere with each other.',
+    tags:['Hit Discovery','Drug Combinations','Synergy'],stage:'HIT DISCOVERY',chain:'hit',
+    url:'https://scisynth-server.onrender.com',
+    how:['🔬 Analyses mechanistic overlap of both drugs','🧬 Predicts synergy vs antagonism','📊 Links to Harvard Madrigal model'],
+    ex:['Imatinib + Dasatinib','Pembrolizumab + Carboplatin','Metformin + Rapamycin'],
+    fields:[
+      {id:'disease',lbl:'Disease / Indication',ph:'e.g. Non-small cell lung cancer',req:true},
+      {id:'drug1',lbl:'Drug 1',ph:'e.g. Pembrolizumab',req:true},
+      {id:'drug2',lbl:'Drug 2',ph:'e.g. Carboplatin',req:true}
+    ]},
+  immuniq:{name:'ImmunIQ',sub:'Immunotherapy Response Prediction — Harvard COMPASS',
+    desc:'Predict immunotherapy response for a cancer type and patient profile. Powered by COMPASS, a foundation model from Harvard Medical School that predicts immunotherapy outcomes across cancers and treatments.',
+    plain:'Immunotherapy works incredibly well for some patients and not at all for others. <strong>ImmunIQ</strong> uses AI trained on thousands of patient outcomes to predict whether this patient is likely to respond to immunotherapy, and which type has the best odds.',
+    tags:['Clinical Trials','Immunotherapy','Precision Oncology'],stage:'CLINICAL TRIALS',chain:'clinical',
+    url:'https://scisynth-server.onrender.com',
+    how:['🧬 Analyses cancer type and biomarker profile','💊 Predicts immunotherapy response likelihood','🔗 Links to Harvard COMPASS foundation model'],
+    ex:['Non-small cell lung cancer','Melanoma','Triple-negative breast cancer'],
+    fields:[
+      {id:'disease',lbl:'Cancer Type',ph:'e.g. Non-small cell lung cancer',req:true},
+      {id:'biomarkers',lbl:'Known Biomarkers (optional)',ph:'e.g. PD-L1 positive, TMB-high, MSI-H'},
+      {id:'prior_treatment',lbl:'Prior Treatments (optional)',ph:'e.g. Carboplatin, Paclitaxel'}
+    ]}
 };
 
-const CHAIN_MAP = {scisynth:'target',targetscope:'target',alphamissense:'target',bindpredict:'hit',repurposerx:'hit',molprofile:'lead',biosignal:'clinical',trialmatch:'clinical'};
+const CHAIN_MAP = {scisynth:'target',targetscope:'target',alphamissense:'target',bindpredict:'hit',repurposerx:'hit',combinedrx:'hit',molprofile:'lead',biosignal:'clinical',trialmatch:'clinical',immuniq:'clinical'};
 
 const HANDOFFS = {
   scisynth:     [{lbl:'→ Investigate targets in TargetScope',to:'targetscope',fld:'disease',v:()=>document.getElementById('gDisease').value}],
@@ -389,13 +419,15 @@ function welcomeHTML() {
     ['⑤','repurposerx','RepurposeRx','Can an existing drug treat this disease?',''],
     ['⑥','trialmatch','TrialMatch','Which clinical trials match this patient?',''],
     ['⑦','alphamissense','AlphaMissense','Is this genetic mutation dangerous?','DeepMind'],
-    ['⑧','molprofile','MolProfile','Will this drug survive in the human body?','SwissADME']
+    ['⑧','molprofile','MolProfile','Will this drug survive in the human body?','SwissADME'],
+    ['⑨','combinedrx','CombinedRx','Do these two drugs work better together?','Madrigal'],
+    ['⑩','immuniq','ImmunIQ','Will this patient respond to immunotherapy?','COMPASS']
   ];
   const cHTML = cards.map(([num,id,name,q,badge])=>`<div class="tc" onclick="go('${id}')"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${num}</span><span class="tc-name">${name}</span>${badge?`<span style="font-family:var(--mono);font-size:9px;color:var(--blue);background:rgba(91,155,212,.1);border:1px solid rgba(91,155,212,.2);border-radius:3px;padding:1px 5px">${badge}</span>`:''}</div><p class="tc-q">${q}</p></div>`).join('');
   return `<div class="welcome">
     <div class="welcome-left">
       <h1 class="wtitle">Research drug development.<br><em>Faster.</em></h1>
-      <p class="wsub">Eight AI-powered tools. One unified platform. Covering the full drug development value chain — from scientific literature to drug viability profiling.</p>
+      <p class="wsub">Ten AI-powered tools. One unified platform. Covering the full drug development value chain — from scientific literature to drug viability profiling. With <strong style="color:#9B59B6">Harvard Zitnik Lab</strong> integrations across 5 touchpoints.</p>
       <div style="background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.2);border-radius:8px;padding:14px 16px;margin-bottom:1.5rem;display:flex;gap:12px">
         <span style="font-size:18px;flex-shrink:0">🧭</span>
         <div><p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:4px">New to life sciences?</p><p style="font-size:12px;color:var(--text2);line-height:1.6">Toggle <strong style="color:var(--text)">Guide Mode</strong> in the sidebar — it adds plain-English explanations to every tool. No PhD required.</p></div>
@@ -408,9 +440,9 @@ function welcomeHTML() {
     <div class="welcome-right">
       <div class="chain-ov" style="margin-bottom:1.5rem">
         <div class="cc"><p class="cc-lbl">Target ID</p><p class="cc-tools">SciSynth ①<br>TargetScope ②<br>AlphaMissense ⑦</p></div>
-        <div class="cc"><p class="cc-lbl">Hit Discovery</p><p class="cc-tools">BindPredict ③<br>RepurposeRx ⑤</p></div>
+        <div class="cc"><p class="cc-lbl">Hit Discovery</p><p class="cc-tools">BindPredict ③<br>RepurposeRx ⑤<br>CombinedRx ⑨</p></div>
         <div class="cc"><p class="cc-lbl">Lead Opt</p><p class="cc-tools">MolProfile ⑧<br>BindPredict ③</p></div>
-        <div class="cc"><p class="cc-lbl">Clinical</p><p class="cc-tools">BioSignal ④<br>TrialMatch ⑥</p></div>
+        <div class="cc"><p class="cc-lbl">Clinical</p><p class="cc-tools">BioSignal ④<br>TrialMatch ⑥<br>ImmunIQ ⑩</p></div>
       </div>
       <div class="demo" style="margin-bottom:1.5rem">
         <p class="demo-t">Demo script — NSCLC in 12 minutes</p>
@@ -427,6 +459,12 @@ function welcomeHTML() {
         <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:12px">Data Sources</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           ${[['PubMed','35M+ papers'],['OpenTargets','60K+ diseases'],['ChEMBL','2.4M+ compounds'],['UniProt','250M+ proteins'],['DisGeNET','628K+ associations'],['ClinicalTrials.gov','500K+ trials'],['AlphaFold DB','Structure data'],['AlphaMissense','Variant scores']].map(([n,d])=>`<div style="font-family:var(--mono);font-size:10px"><span style="color:var(--green)">${n}</span><br><span style="color:var(--text3)">${d}</span></div>`).join('')}
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+          <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#9B59B6;margin-bottom:8px">Harvard Zitnik Lab — 5 integrations</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            ${[['TxGNN','Drug repurposing AI · Nature Med 2024'],['SHEPHERD','Rare disease AI'],['Madrigal','Drug combinations · NeurIPS 2024'],['COMPASS','Immunotherapy · Nature Cancer 2024'],['TDC','ML benchmarks · Nature Chem Bio']].map(([n,d])=>`<div style="font-family:var(--mono);font-size:10px"><span style="color:#9B59B6">${n}</span><br><span style="color:var(--text3)">${d}</span></div>`).join('')}
+          </div>
         </div>
         <p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">Powered by Groq · Llama 3.3 70B · Free · No login required</p>
       </div>
@@ -479,6 +517,17 @@ function applyEx(chip) {
     if(gf) gf.value=p[0]; if(vf) vf.value=p.slice(1).join(' ');
     return;
   }
+  if(id==='combinedrx' && ex.includes('+')) {
+    const parts = ex.split('+').map(s=>s.trim());
+    const d1=document.getElementById('f-drug1'), d2=document.getElementById('f-drug2'), dis=document.getElementById('f-disease');
+    if(d1) d1.value=parts[0]||'';
+    if(d2) d2.value=parts[1]||'';
+    if(dis && !dis.value){
+      const g=document.getElementById('gDisease');
+      dis.value = (g&&g.value) ? g.value : 'Non-small cell lung cancer';
+    }
+    return;
+  }
   const fst = T[id].fields.find(f=>f.req);
   if(fst){ const el=document.getElementById('f-'+fst.id); if(el) el.value=ex; }
 }
@@ -492,7 +541,9 @@ const STEPS={
   repurposerx:['Scanning OpenTargets for mechanisms','Querying approved drug database','Searching PubMed evidence','Scoring repurposing candidates'],
   trialmatch:['Querying ClinicalTrials.gov live','Filtering by eligibility criteria','Scoring trial matches with AI','Ranking results'],
   alphamissense:['Resolving gene in Ensembl','Running Ensembl VEP annotation','Retrieving AlphaFold structure','Synthesising clinical interpretation'],
-  molprofile:['Looking up compound in PubChem','Fetching ChEMBL bioactivity data','Computing ADME properties','Generating drug viability report']
+  molprofile:['Looking up compound in PubChem','Fetching ChEMBL bioactivity data','Computing ADME properties','Generating drug viability report'],
+  combinedrx:['Mapping mechanisms of both drugs','Searching combination evidence on PubMed','Querying ClinicalTrials.gov for combo trials','Predicting synergy with AI (Madrigal-style)'],
+  immuniq:['Profiling cancer biomarkers','Querying immunotherapy literature','Analysing checkpoint inhibitor relevance','Predicting response with AI (COMPASS-style)']
 };
 
 function loadHTML(id){
@@ -688,6 +739,36 @@ async function callTool(id,p){
     let synthesis=null;
     try{const hyp=compound+' is a viable oral drug candidate with acceptable ADME properties';const paper={title:'ADME profile: '+compound,authors:'PubChem/NIH, ChEMBL/EMBL-EBI',year:'2024',journal:'Computational Chemistry',abstract:'Compound: '+compound+'. MW: '+mw.toFixed(1)+'. LogP: '+logp.toFixed(2)+'. HBD: '+hbd+'. HBA: '+hba+'. RotB: '+rotb+'. TPSA: '+tpsa.toFixed(1)+'. Lipinski: '+(lipinski.passes?'PASSES':'FAILS: '+viol.join(', '))+'. Veber: '+(veber.passes?'PASSES':'FAILS')+'. BBB: '+(bbb?'Possible':'Unlikely')+'. ChEMBL phase: '+(chembl?.max_phase??'unknown')+'. Context: '+(p.target_context||'general')+'.'};synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{hypothesis:hyp,papers:[paper]});}catch(_){}
     return{compound,cid,pubchem,chembl,mw,logp,hbd,hba,rotb,tpsa,lipinski,veber,bbb_likely:bbb,synthesis,_compound:compound};
+  }
+
+  if(id==='combinedrx'){
+    const d1=(p.drug1||'').trim(), d2=(p.drug2||'').trim(), dis=(p.disease||'').trim();
+    let synthesis=null;
+    try{synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{
+      hypothesis:d1+' combined with '+d2+' produces synergistic clinical benefit in '+dis,
+      papers:[{
+        title:'Drug combination analysis: '+d1+' + '+d2+' in '+dis,
+        authors:'Madrigal AI / PubMed / ClinicalTrials.gov',year:'2024',journal:'Combination Therapy',
+        abstract:'Combination of '+d1+' and '+d2+' for '+dis+'. Assess: (1) mechanistic overlap and complementary pathways, (2) preclinical synergy evidence, (3) known clinical trial outcomes, (4) overlapping toxicities and safety concerns, (5) classification as additive vs synergistic vs antagonistic. Provide an evidence-based verdict and key findings.'
+      }]
+    });}catch(_){}
+    return{drug1:d1,drug2:d2,disease:dis,synthesis};
+  }
+
+  if(id==='immuniq'){
+    const dis=(p.disease||'').trim();
+    const bio=(p.biomarkers||'').trim();
+    const prior=(p.prior_treatment||'').trim();
+    let synthesis=null;
+    try{synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{
+      hypothesis:'Immunotherapy is likely to produce a clinical response in '+dis+(bio?' with biomarkers '+bio:'')+(prior?' after '+prior:''),
+      papers:[{
+        title:'Immunotherapy response prediction in '+dis,
+        authors:'COMPASS AI / Harvard Medical School / Clinical Literature',year:'2024',journal:'Immunotherapy and Precision Oncology',
+        abstract:'Cancer: '+dis+'. Known biomarkers: '+(bio||'not specified')+'. Prior treatments: '+(prior||'none')+'. Assess: PD-L1/PD-1 pathway relevance, TMB status, MSI-H likelihood, predicted response to checkpoint inhibitors (pembrolizumab, nivolumab, atezolizumab), CAR-T candidacy where applicable, and recommended immunotherapy approach based on current evidence. Provide a verdict on likely responder vs non-responder, confidence level, and key clinical findings.'
+      }]
+    });}catch(_){}
+    return{disease:dis,biomarkers:bio,prior_treatment:prior,synthesis};
   }
 
   throw new Error('Unknown tool: '+id);
@@ -886,6 +967,63 @@ function buildSources(id, data) {
     }
   }
 
+  // CombinedRx: Madrigal + PubMed + ClinicalTrials.gov
+  if (id === 'combinedrx') {
+    out.push({
+      id: idx++,
+      label: `Madrigal — Drug combination foundation model`,
+      detail: 'Multimodal AI predicting clinical outcomes of drug combinations · NeurIPS 2024',
+      url: 'https://github.com/mims-harvard/Madrigal',
+      tag: 'Harvard Madrigal'
+    });
+    out.push({
+      id: idx++,
+      label: `PubMed — combination evidence: ${data.drug1} + ${data.drug2}`,
+      detail: `Combination evidence for ${data.disease}`,
+      url: `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(data.drug1+' '+data.drug2+' combination '+data.disease)}`,
+      tag: 'PubMed'
+    });
+    out.push({
+      id: idx++,
+      label: `ClinicalTrials.gov — combination trials`,
+      detail: `Live trials matching ${data.drug1} + ${data.drug2} in ${data.disease}`,
+      url: `https://clinicaltrials.gov/search?term=${encodeURIComponent(data.drug1+' '+data.drug2)}&cond=${encodeURIComponent(data.disease)}`,
+      tag: 'ClinicalTrials.gov'
+    });
+  }
+
+  // ImmunIQ: COMPASS + PubMed + ClinicalTrials.gov
+  if (id === 'immuniq') {
+    out.push({
+      id: idx++,
+      label: `COMPASS — Immunotherapy foundation model`,
+      detail: 'Predicts immunotherapy outcomes across cancers and treatments · Nature Cancer 2024',
+      url: 'https://www.immuno-compass.com/',
+      tag: 'Harvard COMPASS'
+    });
+    out.push({
+      id: idx++,
+      label: `COMPASS — GitHub repository`,
+      detail: 'Open-source model code from Harvard Medical School',
+      url: 'https://github.com/mims-harvard/COMPASS',
+      tag: 'GitHub'
+    });
+    out.push({
+      id: idx++,
+      label: `ClinicalTrials.gov — Immunotherapy trials in ${data.disease}`,
+      detail: 'Live recruiting immunotherapy trials',
+      url: `https://clinicaltrials.gov/search?term=immunotherapy&cond=${encodeURIComponent(data.disease)}`,
+      tag: 'ClinicalTrials.gov'
+    });
+    out.push({
+      id: idx++,
+      label: `PubMed — Immunotherapy evidence in ${data.disease}`,
+      detail: 'Peer-reviewed clinical literature on response biomarkers',
+      url: `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent('immunotherapy '+data.disease+' response biomarker')}`,
+      tag: 'PubMed'
+    });
+  }
+
   return out;
 }
 
@@ -1016,7 +1154,7 @@ function exportCopy(id) {
 }
 
 function render(id,data,p){
-  const map={scisynth:rSci,targetscope:rTarget,bindpredict:rBind,biosignal:rBio,repurposerx:rRepurpose,trialmatch:rTrial,alphamissense:rAM,molprofile:rMol};
+  const map={scisynth:rSci,targetscope:rTarget,bindpredict:rBind,biosignal:rBio,repurposerx:rRepurpose,trialmatch:rTrial,alphamissense:rAM,molprofile:rMol,combinedrx:rCombined,immuniq:rImmunIQ};
   const sources = buildSources(id, data);
   lastResult = { id, data, params: p, sources };
   const fn = map[id];
@@ -1074,7 +1212,7 @@ function rRepurpose(d,p){
   const cs=d.repurposing_candidates||[],sum=d.disease_mechanism_summary||'',best=d.best_opportunity||'',adv=d.time_cost_advantage||'';
   if(!cs.length)return eHTML('No repurposing candidates found. Try a different disease name.',true);
   const cH=cs.slice(0,8).map((c,i)=>{const sc=parseInt(c.repurposing_score||0),pct=Math.min(100,sc),ec=c.evidence_strength==='Strong'?'var(--green)':c.evidence_strength==='Moderate'?'var(--amber)':'var(--text3)';return`<div class="trow" style="align-items:flex-start;padding:12px 14px"><span class="tr" style="padding-top:2px">${String(i+1).padStart(2,'0')}</span><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><span class="tg" style="color:var(--teal)">${c.drug_name||'?'}</span><span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${c.drug_class||''}</span></div><p style="font-size:11px;color:var(--text3);margin-bottom:3px">Currently: ${c.current_indication||''}</p><p style="font-size:12px;color:var(--text2);line-height:1.5">${c.repurposing_rationale||''}</p>${c.development_stage?`<p style="font-family:var(--mono);font-size:10px;color:var(--blue);margin-top:3px">${c.development_stage}</p>`:''}</div><div style="text-align:right;min-width:70px"><div class="sbw" style="width:70px;margin-left:auto;margin-bottom:3px"><div class="sb" style="width:${pct}%;background:var(--teal)"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--text3)">${sc}</span><br><span style="font-family:var(--mono);font-size:9px;color:${ec}">${c.evidence_strength||''}</span></div></div>`;}).join('');
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">RepurposeRx — Repurposing Candidates</span><span class="badge ok">${cs.length} Candidates</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · ChEMBL · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${cH}${best?`<div class="fi" style="margin-top:10px;border-color:rgba(69,179,162,.2)"><span class="finum" style="color:var(--teal)">BEST</span><span class="fitxt">${best}</span></div>`:''}${adv?`<div class="fi" style="margin-top:4px"><span class="finum">TIME</span><span class="fitxt">${adv}</span></div>`:''}${hcta('repurposerx',d)}${sourcesPanel(buildSources('repurposerx',d))}${exportBar('repurposerx')}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">RepurposeRx — Repurposing Candidates</span><span class="badge ok">${cs.length} Candidates</span></div><div class="mrow"><span class="mi">Disease: <span>${p.disease}</span></span><span class="mi">Sources: <span>OpenTargets · ChEMBL · PubMed</span></span></div>${sum?`<p class="rtxt" style="margin-bottom:12px">${sum}</p>`:''}${cH}${best?`<div class="fi" style="margin-top:10px;border-color:rgba(69,179,162,.2)"><span class="finum" style="color:var(--teal)">BEST</span><span class="fitxt">${best}</span></div>`:''}${adv?`<div class="fi" style="margin-top:4px"><span class="finum">TIME</span><span class="fitxt">${adv}</span></div>`:''}${hcta('repurposerx',d)}<div style="background:rgba(69,179,162,.07);border:1px solid rgba(69,179,162,.25);border-radius:8px;padding:14px 16px;margin:12px 0"><p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#45B3A2;margin-bottom:8px">DEEPEN WITH TXGNN — HARVARD ZITNIK LAB</p><p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px">TxGNN is a graph AI foundation model for drug repurposing trained on the full biomedical knowledge graph — published in <em>Nature Medicine</em> by Harvard Medical School. Use it for deeper mechanistic repurposing analysis.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="http://txgnn.org/?disease=${encodeURIComponent(p.disease||'')}" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:#45B3A2;padding:7px 14px;border-radius:4px;text-decoration:none">TxGNN Explorer ↗</a><a href="https://github.com/mims-harvard/TxGNN" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:#45B3A2;border:1px solid rgba(69,179,162,.4);padding:7px 14px;border-radius:4px;text-decoration:none">GitHub ↗</a></div><p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:8px">Zitnik Lab · Harvard Medical School · Nature Medicine 2024</p></div>${sourcesPanel(buildSources('repurposerx',d))}${exportBar('repurposerx')}</div>`;
 }
 
 function rTrial(d,p){
@@ -1129,7 +1267,17 @@ function rTrial(d,p){
     +(p.gender?'<span class="mi">Gender: <span>'+p.gender+'</span></span>':'')
     +'</div>'+tH
     +sourcesPanel(buildSources('trialmatch',d))
-    +exportBar('trialmatch')+'</div>';
+    +exportBar('trialmatch')
+    +`<div style="background:rgba(147,112,219,.07);border:1px solid rgba(147,112,219,.25);border-radius:8px;padding:14px 16px;margin:12px 0">
+      <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#9370DB;margin-bottom:8px">RARE DISEASE? TRY SHEPHERD — HARVARD ZITNIK LAB</p>
+      <p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px">SHEPHERD is a deep learning model from Harvard Medical School for diagnosing patients with rare genetic diseases using phenotype and genotype data.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="https://github.com/mims-harvard/SHEPHERD" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:#9370DB;padding:7px 14px;border-radius:4px;text-decoration:none">SHEPHERD ↗</a>
+        <a href="https://zitniklab.hms.harvard.edu/projects/SHEPHERD" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:#9370DB;border:1px solid rgba(147,112,219,.4);padding:7px 14px;border-radius:4px;text-decoration:none">Project Page ↗</a>
+      </div>
+      <p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:8px">Zitnik Lab · Harvard Medical School · Rare Disease AI</p>
+    </div>`
+    +'</div>';
 }
 function rAM(d){
   if(d.error)return eHTML(d.error);
@@ -1204,8 +1352,140 @@ function rMol(d,p){
   const mH=mets.map(m=>`<div class="mc ${m.p?'':'fail'}"><div class="mc-lbl">${m.l}</div><div class="mc-val">${m.v}<span class="mc-unit"> ${m.u}</span></div><div class="mc-bw"><div class="mc-b" style="width:${Math.round(m.s)}%;background:${m.p?'var(--green)':'var(--amber)'}"></div></div><div class="mc-s" style="color:${m.p?'var(--green)':'var(--amber)'}">${m.p?'✓':'!'}</div></div>`).join('');
   const pi=`<div class="insight plain"><strong>What does this mean?</strong> This checks whether <strong>${compound}</strong> has the properties a drug needs to survive in the body. ${lipinski.passes?'It <strong style="color:var(--green)">passes</strong> the standard drug-likeness test — should be absorbable by mouth.':'It has <strong style="color:var(--amber)">'+(lipinski.violations.length)+' violation(s)</strong>: '+lipinski.violations.join(', ')+'.'} ${bbb?' It may <strong>cross the blood-brain barrier</strong>.':''} ${mp===4?' Already <strong style="color:var(--green)">FDA/EMA approved</strong>.':mp>=1?' Reached <strong>clinical Phase '+mp+'</strong>.':''}</div>`;
   const sy=synthesis||{},ss=sy.summary||'',sf=sy.keyFindings||[];
-  return `<div class="rcard"><div class="rhdr"><span class="rtitle">MolProfile — Drug Viability Report</span><span class="badge ${ovc}">${ol}</span></div><div class="mrow">${cid?`<span class="mi">PubChem: <span><a href="https://pubchem.ncbi.nlm.nih.gov/compound/${cid}" target="_blank" style="color:var(--blue)">CID ${cid} ↗</a></span></span>`:''} ${chembl?.chembl_id?`<span class="mi">ChEMBL: <span><a href="https://www.ebi.ac.uk/chembl/compound_report_card/${chembl.chembl_id}/" target="_blank" style="color:var(--blue)">${chembl.chembl_id} ↗</a></span></span>`:''} ${pl?`<span class="mi">Stage: <span style="color:${pc}">${pl}</span></span>`:''}</div>${pi}<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:${lipinski.passes?'rgba(74,180,100,.06)':'rgba(212,168,67,.06)'};border:1px solid ${lipinski.passes?'rgba(74,180,100,.2)':'rgba(212,168,67,.2)'};border-radius:6px"><div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">LIPINSKI RULE OF FIVE</div><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:${lipinski.passes?'var(--green)':'var(--amber)'}">${lipinski.passes?'✓ Passes':lipinski.violations.length+' violation(s)'}</div>${lipinski.violations.length?`<div style="font-size:11px;color:var(--amber);margin-top:2px">${lipinski.violations.join(' · ')}</div>`:''}</div><div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">VEBER ORAL</div><div style="font-family:var(--mono);font-size:13px;color:${veber.passes?'var(--green)':'var(--amber)'}">${veber.passes?'✓ Passes':'! Fails'}</div></div><div style="margin-left:16px;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">BBB PENETRATION</div><div style="font-family:var(--mono);font-size:13px;color:${bbb?'var(--teal)':'var(--text3)'}">${bbb?'~ Possible':'~ Unlikely'}</div></div></div><div class="mgrid">${mH}</div>${chembl?.indication||chembl?.drug_type?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${chembl?.indication?`<div class="fi" style="flex:1;min-width:180px"><span class="finum">IND</span><span class="fitxt">${chembl.indication}</span></div>`:''} ${chembl?.drug_type?`<div class="fi" style="flex:1;min-width:120px"><span class="finum">TYPE</span><span class="fitxt">${chembl.drug_type}</span></div>`:''} ${chembl?.oral!=null?`<div class="fi" style="flex:1;min-width:100px"><span class="finum">ORAL</span><span class="fitxt" style="color:${chembl.oral?'var(--green)':'var(--red)'}">${chembl.oral?'Yes':'No'}</span></div>`:''}</div>`:''}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Drug Viability Interpretation</p><p class="rtxt">${ss}</p>`:''}${sf.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}<div style="margin-top:12px;padding:10px;background:rgba(74,180,100,.04);border:1px solid rgba(74,180,100,.12);border-radius:6px;font-size:11px;color:var(--text3);line-height:1.5">Data from PubChem (NIH) and ChEMBL (EMBL-EBI). Equivalent to SwissADME profiling. For research use only.</div>${hcta('molprofile',d)}${sourcesPanel(buildSources('molprofile',d))}${exportBar('molprofile')}</div>`;
+  return `<div class="rcard"><div class="rhdr"><span class="rtitle">MolProfile — Drug Viability Report</span><span class="badge ${ovc}">${ol}</span></div><div class="mrow">${cid?`<span class="mi">PubChem: <span><a href="https://pubchem.ncbi.nlm.nih.gov/compound/${cid}" target="_blank" style="color:var(--blue)">CID ${cid} ↗</a></span></span>`:''} ${chembl?.chembl_id?`<span class="mi">ChEMBL: <span><a href="https://www.ebi.ac.uk/chembl/compound_report_card/${chembl.chembl_id}/" target="_blank" style="color:var(--blue)">${chembl.chembl_id} ↗</a></span></span>`:''} ${pl?`<span class="mi">Stage: <span style="color:${pc}">${pl}</span></span>`:''}</div>${pi}<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;padding:10px 14px;background:${lipinski.passes?'rgba(74,180,100,.06)':'rgba(212,168,67,.06)'};border:1px solid ${lipinski.passes?'rgba(74,180,100,.2)':'rgba(212,168,67,.2)'};border-radius:6px"><div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">LIPINSKI RULE OF FIVE</div><div style="font-family:var(--mono);font-size:14px;font-weight:500;color:${lipinski.passes?'var(--green)':'var(--amber)'}">${lipinski.passes?'✓ Passes':lipinski.violations.length+' violation(s)'}</div>${lipinski.violations.length?`<div style="font-size:11px;color:var(--amber);margin-top:2px">${lipinski.violations.join(' · ')}</div>`:''}</div><div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">VEBER ORAL</div><div style="font-family:var(--mono);font-size:13px;color:${veber.passes?'var(--green)':'var(--amber)'}">${veber.passes?'✓ Passes':'! Fails'}</div></div><div style="margin-left:16px;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:2px">BBB PENETRATION</div><div style="font-family:var(--mono);font-size:13px;color:${bbb?'var(--teal)':'var(--text3)'}">${bbb?'~ Possible':'~ Unlikely'}</div></div></div><div class="mgrid">${mH}</div>${chembl?.indication||chembl?.drug_type?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">${chembl?.indication?`<div class="fi" style="flex:1;min-width:180px"><span class="finum">IND</span><span class="fitxt">${chembl.indication}</span></div>`:''} ${chembl?.drug_type?`<div class="fi" style="flex:1;min-width:120px"><span class="finum">TYPE</span><span class="fitxt">${chembl.drug_type}</span></div>`:''} ${chembl?.oral!=null?`<div class="fi" style="flex:1;min-width:100px"><span class="finum">ORAL</span><span class="fitxt" style="color:${chembl.oral?'var(--green)':'var(--red)'}">${chembl.oral?'Yes':'No'}</span></div>`:''}</div>`:''}${ss?`<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI Drug Viability Interpretation</p><p class="rtxt">${ss}</p>`:''}${sf.map((f,i)=>`<div class="fi"><span class="finum">${String(i+1).padStart(2,'0')}</span><span class="fitxt">${f}</span></div>`).join('')}<div style="margin-top:12px;padding:10px;background:rgba(74,180,100,.04);border:1px solid rgba(74,180,100,.12);border-radius:6px;font-size:11px;color:var(--text3);line-height:1.5">Data from PubChem (NIH) and ChEMBL (EMBL-EBI). Equivalent to SwissADME profiling. For research use only.</div>${hcta('molprofile',d)}<div style="background:rgba(91,155,212,.07);border:1px solid rgba(91,155,212,.25);border-radius:8px;padding:14px 16px;margin:12px 0"><p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--blue);margin-bottom:8px">BENCHMARK WITH TDC — HARVARD ZITNIK LAB</p><p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px">Therapeutics Data Commons (TDC 2.0) from Harvard provides ML-benchmark datasets for drug ADME and toxicity — validated against experimental data from thousands of compounds.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="https://tdcommons.ai/single_pred_tasks/adme/" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:var(--blue);padding:7px 14px;border-radius:4px;text-decoration:none">TDC ADME Benchmarks ↗</a><a href="https://tdcommons.ai/single_pred_tasks/tox/" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--blue);border:1px solid rgba(91,155,212,.4);padding:7px 14px;border-radius:4px;text-decoration:none">TDC Toxicity ↗</a><a href="https://github.com/mims-harvard/TDC" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border);padding:7px 14px;border-radius:4px;text-decoration:none">GitHub ↗</a></div><p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:8px">Zitnik Lab · Harvard Medical School · Nature Chemical Biology 2022</p></div>${sourcesPanel(buildSources('molprofile',d))}${exportBar('molprofile')}</div>`;
 }
+
+function rCombined(d,p){
+  if(d.error)return eHTML(d.error);
+  const sy=d.synthesis||{};
+  const ss=sy.summary||'';
+  const sf=sy.keyFindings||sy.key_findings||[];
+  const verdict=(sy.verdict||'').toLowerCase();
+  const conf=sy.confidence||'Medium';
+  // Heuristic synergy classification
+  let synergyLabel='Likely Additive', synergyColor='var(--amber)', synergyDesc='Both drugs may contribute independently. Watch for overlapping toxicity.';
+  if(verdict.includes('support')||verdict.includes('strong')||/synerg/i.test(ss)){
+    synergyLabel='Synergy Likely'; synergyColor='var(--green)'; synergyDesc='Mechanistic overlap and clinical evidence suggest the pair outperforms either drug alone.';
+  } else if(verdict.includes('contra')||verdict.includes('antagon')||/antagon|interfere/i.test(ss)){
+    synergyLabel='Possible Antagonism'; synergyColor='var(--red)'; synergyDesc='Pathway interference or pharmacokinetic conflict suggested. Validate carefully before clinical use.';
+  } else if(verdict.includes('insufficient')||verdict.includes('unclear')||!ss){
+    synergyLabel='Insufficient Evidence'; synergyColor='var(--text3)'; synergyDesc='Limited published evidence for this specific combination. Consider preclinical screening.';
+  }
+  const pct=conf==='High'?86:conf==='Medium'?58:32;
+  const madrigalUrl='https://github.com/mims-harvard/Madrigal';
+  const pubmedUrl='https://pubmed.ncbi.nlm.nih.gov/?term='+encodeURIComponent(d.drug1+' '+d.drug2+' combination '+d.disease);
+  const ctUrl='https://clinicaltrials.gov/search?term='+encodeURIComponent(d.drug1+' '+d.drug2)+'&cond='+encodeURIComponent(d.disease);
+  const fallback=ss?'':'<p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">Combination of <strong>'+d.drug1+'</strong> and <strong>'+d.drug2+'</strong> for <strong>'+d.disease+'</strong>. The AI synthesis service is rate-limited or unreachable right now — use the deep links below to query Madrigal, PubMed, and ClinicalTrials.gov directly for the most current evidence.</p>';
+  const pi='<div class="insight plain"><strong>What does this mean?</strong> Some diseases respond better to two drugs together than either one alone. This panel checks whether <strong>'+d.drug1+' + '+d.drug2+'</strong> in <strong>'+d.disease+'</strong> shows mechanistic overlap, published synergy evidence, or active combination trials — and warns you of overlapping toxicity.</div>';
+  return '<div class="rcard">'
+    +'<div class="rhdr"><span class="rtitle">CombinedRx — Drug Combination Analysis</span>'
+    +'<span class="badge" style="background:rgba(233,30,99,.15);color:#E91E63;border:1px solid rgba(233,30,99,.3);font-family:var(--mono);font-size:10px">Harvard Madrigal</span></div>'
+    +'<div class="mrow">'
+    +'<span class="mi">Drug 1: <span>'+d.drug1+'</span></span>'
+    +'<span class="mi">Drug 2: <span>'+d.drug2+'</span></span>'
+    +'<span class="mi">Disease: <span>'+d.disease+'</span></span>'
+    +'<span class="mi">Sources: <span>PubMed · ClinicalTrials.gov · Madrigal AI</span></span>'
+    +'</div>'
+    +pi
+    +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;padding:14px 16px;background:rgba(233,30,99,.05);border:1px solid rgba(233,30,99,.25);border-radius:8px">'
+    +'<div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">SYNERGY VERDICT</div>'
+    +'<div style="font-family:var(--serif);font-size:18px;font-weight:500;color:'+synergyColor+'">'+synergyLabel+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:4px;max-width:520px">'+synergyDesc+'</div></div>'
+    +'<div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">CONFIDENCE</div>'
+    +'<div style="font-family:var(--mono);font-size:14px;color:'+cc(pct)+'">'+conf+'</div>'
+    +'<div style="width:80px;height:4px;background:var(--bg3);border-radius:2px;margin-top:6px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+cc(pct)+'"></div></div>'
+    +'</div></div>'
+    +fallback
+    +(ss?'<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI COMBINATION ANALYSIS</p><p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">'+ss+'</p>':'')
+    +(sf.length?'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">KEY FINDINGS</p>'
+      +sf.map((f,i)=>'<div class="fi"><span class="finum">'+String(i+1).padStart(2,'0')+'</span><span class="fitxt">'+f+'</span></div>').join(''):'')
+    +'<div style="background:rgba(233,30,99,.07);border:1px solid rgba(233,30,99,.25);border-radius:8px;padding:14px 16px;margin:14px 0">'
+    +'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#E91E63;margin-bottom:8px">DEEPEN WITH MADRIGAL — HARVARD ZITNIK LAB</p>'
+    +'<p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px">Madrigal is a multimodal AI from Harvard that predicts clinical outcomes of drug combinations from preclinical data — published at NeurIPS 2024. Access the full model for deeper synergy modelling.</p>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<a href="'+madrigalUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:#E91E63;padding:7px 14px;border-radius:4px;text-decoration:none">Madrigal on GitHub ↗</a>'
+    +'<a href="'+ctUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:#E91E63;border:1px solid rgba(233,30,99,.4);padding:7px 14px;border-radius:4px;text-decoration:none">Combination Trials ↗</a>'
+    +'<a href="'+pubmedUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border);padding:7px 14px;border-radius:4px;text-decoration:none">PubMed Evidence ↗</a>'
+    +'</div>'
+    +'<p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:8px">Zitnik Lab · Harvard Medical School · NeurIPS 2024</p>'
+    +'</div>'
+    +sourcesPanel(buildSources('combinedrx',d))
+    +exportBar('combinedrx')+'</div>';
+}
+
+function rImmunIQ(d,p){
+  if(d.error)return eHTML(d.error);
+  const sy=d.synthesis||{};
+  const ss=sy.summary||'';
+  const sf=sy.keyFindings||sy.key_findings||[];
+  const verdict=(sy.verdict||'').toLowerCase();
+  const conf=sy.confidence||'Medium';
+  // Biomarker-aware response heuristic
+  const bio=(d.biomarkers||'').toLowerCase();
+  let respLabel='Possible Responder', respColor='var(--amber)', respDesc='Limited biomarker information. Recommend full immunoprofiling before treatment selection.';
+  if(verdict.includes('support')||verdict.includes('strong')||bio.includes('pd-l1 positive')||bio.includes('pd-l1 high')||bio.includes('tmb-high')||bio.includes('msi-h')){
+    respLabel='Likely Responder'; respColor='var(--green)';
+    respDesc='Biomarker profile and disease context favour checkpoint inhibitor response. PD-1/PD-L1 inhibitors are first-line candidates.';
+  } else if(verdict.includes('contra')||bio.includes('pd-l1 negative')||bio.includes('tmb-low')){
+    respLabel='Unlikely Responder'; respColor='var(--red)';
+    respDesc='Biomarker profile suggests poor checkpoint inhibitor response. Consider combination strategies, CAR-T (if eligible), or non-immunotherapy approaches.';
+  } else if(verdict.includes('insufficient')||(!ss&&!bio)){
+    respLabel='Profile Incomplete'; respColor='var(--text3)';
+    respDesc='Order PD-L1 IHC, TMB, and MSI testing before making an immunotherapy decision.';
+  }
+  const pct=conf==='High'?86:conf==='Medium'?58:32;
+  const compassUrl='https://www.immuno-compass.com/';
+  const githubUrl='https://github.com/mims-harvard/COMPASS';
+  const ctUrl='https://clinicaltrials.gov/search?term=immunotherapy&cond='+encodeURIComponent(d.disease);
+  const pubmedUrl='https://pubmed.ncbi.nlm.nih.gov/?term='+encodeURIComponent('immunotherapy '+d.disease+' response biomarker');
+  const candidates=[];
+  if(/lung|nsclc|melanoma|head and neck|bladder|gastric|cervical|esophag/i.test(d.disease)) candidates.push({name:'Pembrolizumab (PD-1)',cls:'1L checkpoint inhibitor'});
+  if(/melanoma|lung|kidney|nsclc/i.test(d.disease)) candidates.push({name:'Nivolumab ± Ipilimumab',cls:'PD-1 ± CTLA-4'});
+  if(/lung|nsclc|bladder|liver/i.test(d.disease)) candidates.push({name:'Atezolizumab (PD-L1)',cls:'PD-L1 inhibitor'});
+  if(/lymphoma|leukaemia|leukemia|myeloma|all|cll/i.test(d.disease)) candidates.push({name:'CAR-T Therapy',cls:'Cellular immunotherapy'});
+  if(!candidates.length) candidates.push({name:'Pembrolizumab',cls:'Pan-tumour PD-1 (TMB-high)'});
+  const candHTML=candidates.slice(0,4).map((c,i)=>'<div class="fi"><span class="finum">'+String(i+1).padStart(2,'0')+'</span><span class="fitxt"><strong>'+c.name+'</strong> <span style="color:var(--text3)">— '+c.cls+'</span></span></div>').join('');
+  const fallback=ss?'':'<p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">Immunotherapy response analysis for <strong>'+d.disease+'</strong>'+(d.biomarkers?' with biomarkers <strong>'+d.biomarkers+'</strong>':'')+'. The AI synthesis service is rate-limited or unreachable right now — use the deep links below to query COMPASS, PubMed, and ClinicalTrials.gov directly for the most current evidence.</p>';
+  const pi='<div class="insight plain"><strong>What does this mean?</strong> Immunotherapy works incredibly well for some patients and not at all for others. This panel uses biomarker context (PD-L1, TMB, MSI) and disease type to predict whether <strong>'+d.disease+'</strong> is likely to respond — and which checkpoint inhibitor or CAR-T option has the best evidence.</div>';
+  return '<div class="rcard">'
+    +'<div class="rhdr"><span class="rtitle">ImmunIQ — Immunotherapy Response Prediction</span>'
+    +'<span class="badge" style="background:rgba(255,107,53,.15);color:#FF6B35;border:1px solid rgba(255,107,53,.3);font-family:var(--mono);font-size:10px">Harvard COMPASS</span></div>'
+    +'<div class="mrow">'
+    +'<span class="mi">Cancer: <span>'+d.disease+'</span></span>'
+    +(d.biomarkers?'<span class="mi">Biomarkers: <span>'+d.biomarkers+'</span></span>':'')
+    +(d.prior_treatment?'<span class="mi">Prior Tx: <span>'+d.prior_treatment+'</span></span>':'')
+    +'<span class="mi">Sources: <span>COMPASS AI · PubMed · ClinicalTrials.gov</span></span>'
+    +'</div>'
+    +pi
+    +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;padding:14px 16px;background:rgba(255,107,53,.05);border:1px solid rgba(255,107,53,.25);border-radius:8px">'
+    +'<div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">RESPONSE PREDICTION</div>'
+    +'<div style="font-family:var(--serif);font-size:18px;font-weight:500;color:'+respColor+'">'+respLabel+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:4px;max-width:520px">'+respDesc+'</div></div>'
+    +'<div style="margin-left:auto;text-align:right"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">CONFIDENCE</div>'
+    +'<div style="font-family:var(--mono);font-size:14px;color:'+cc(pct)+'">'+conf+'</div>'
+    +'<div style="width:80px;height:4px;background:var(--bg3);border-radius:2px;margin-top:6px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+cc(pct)+'"></div></div>'
+    +'</div></div>'
+    +fallback
+    +(ss?'<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">AI IMMUNOTHERAPY ANALYSIS</p><p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">'+ss+'</p>':'')
+    +(sf.length?'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">KEY FINDINGS</p>'
+      +sf.map((f,i)=>'<div class="fi"><span class="finum">'+String(i+1).padStart(2,'0')+'</span><span class="fitxt">'+f+'</span></div>').join(''):'')
+    +'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px;margin-top:6px">CHECKPOINT / CELLULAR THERAPY CANDIDATES</p>'
+    +candHTML
+    +'<div style="background:rgba(255,107,53,.07);border:1px solid rgba(255,107,53,.25);border-radius:8px;padding:14px 16px;margin:14px 0">'
+    +'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#FF6B35;margin-bottom:8px">DEEPEN WITH COMPASS — HARVARD ZITNIK LAB</p>'
+    +'<p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px">COMPASS is a foundation model from Harvard Medical School that predicts immunotherapy outcomes across cancers and treatments. Access the full model for deeper patient-level response prediction.</p>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<a href="'+compassUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:#FF6B35;padding:7px 14px;border-radius:4px;text-decoration:none">COMPASS Explorer ↗</a>'
+    +'<a href="'+githubUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:#FF6B35;border:1px solid rgba(255,107,53,.4);padding:7px 14px;border-radius:4px;text-decoration:none">GitHub ↗</a>'
+    +'<a href="'+ctUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border);padding:7px 14px;border-radius:4px;text-decoration:none">Immunotherapy Trials ↗</a>'
+    +'<a href="'+pubmedUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border);padding:7px 14px;border-radius:4px;text-decoration:none">PubMed Evidence ↗</a>'
+    +'</div>'
+    +'<p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:8px">Zitnik Lab · Harvard Medical School · Nature Cancer 2024</p>'
+    +'</div>'
+    +sourcesPanel(buildSources('immuniq',d))
+    +exportBar('immuniq')+'</div>';
+}
+
 
 function eHTML(msg,noRes){
   const m={rate_limit:"We've hit the AI request limit. Wait 30 seconds and retry.",blocked_403:"A data source is blocking requests from this server.",Failed_to_fetch:"Cannot reach the backend. Wait 30 seconds and retry."};

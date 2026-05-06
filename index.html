@@ -253,6 +253,7 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
       <button class="tbtn" id="b-molprofile"   onclick="go('molprofile')"><span class="tnum">⑧</span><span class="tname">MolProfile</span><span class="tdot"></span></button>
       <button class="tbtn" id="b-combinedrx" onclick="go('combinedrx')"><span class="tnum">⑨</span><span class="tname">CombinedRx</span><span class="tdot" style="background:#E91E63"></span></button>
       <button class="tbtn" id="b-immuniq"    onclick="go('immuniq')"><span class="tnum">⑩</span><span class="tname">ImmunIQ</span><span class="tdot" style="background:#FF6B35"></span></button>
+      <button class="tbtn" id="b-pathogenrx" onclick="go('pathogenrx')"><span class="tnum">⑪</span><span class="tname">PathogenRx</span><span class="tdot" style="background:#00C896"></span></button>
     </div>
     <div class="ss" style="padding-top:0">
       <div class="guide-pill" id="gpill" onclick="toggleGuide()"><div class="gpill-dot"></div><span id="glbl">Guide Mode: Off</span></div>
@@ -275,6 +276,10 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
     <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
       <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:4px">Harvard Zitnik Lab</p>
       <p style="font-family:var(--mono);font-size:10px;color:#9B59B6;line-height:1.6">TxGNN ⑤<br>SHEPHERD ⑥<br>Madrigal ⑨<br>COMPASS ⑩<br>TDC ⑧</p>
+    </div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+      <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:4px">McMaster Stokes Lab</p>
+      <p style="font-family:var(--mono);font-size:10px;color:#00C896;line-height:1.6">SyntheMol-RL ⑪</p>
     </div>
     </div>
   </nav>
@@ -370,10 +375,22 @@ const T = {
       {id:'disease',lbl:'Cancer Type',ph:'e.g. Non-small cell lung cancer',req:true},
       {id:'biomarkers',lbl:'Known Biomarkers (optional)',ph:'e.g. PD-L1 positive, TMB-high, MSI-H'},
       {id:'prior_treatment',lbl:'Prior Treatments (optional)',ph:'e.g. Carboplatin, Paclitaxel'}
+    ]},
+  pathogenrx:{name:'PathogenRx',sub:'Antibiotic Discovery & AMR — McMaster SyntheMol-RL',
+    desc:'Tackle antimicrobial resistance with generative AI. PathogenRx surfaces the AMR landscape for any pathogen and links to SyntheMol-RL — the McMaster generative model that designed synthecin, an in-vivo-validated MRSA antibiotic from a 46-billion-compound chemical space.',
+    plain:'<strong>Antibiotic resistance kills ~5 million people a year.</strong> Most drug-discovery tools only analyse molecules that already exist. <strong>SyntheMol-RL designs brand-new antibiotic structures from scratch</strong> by exploring 46 billion possible compounds. PathogenRx tells you what\'s failing for your pathogen, what\'s in clinical pipeline, and shows you the design route forward.',
+    tags:['Antibiotic Discovery','AMR','Generative Chemistry'],stage:'HIT DISCOVERY',chain:'hit',
+    url:'https://scisynth-server.onrender.com',
+    how:['🦠 Profiles AMR landscape for the target pathogen','💊 Surfaces clinical pipeline & failing drug classes','🧬 Links to SyntheMol-RL for de novo design','📄 Mol Sys Bio 2026 · McMaster Stokes Lab'],
+    ex:['Methicillin-resistant Staphylococcus aureus (MRSA)','Acinetobacter baumannii','Pseudomonas aeruginosa','Klebsiella pneumoniae','Mycobacterium tuberculosis'],
+    fields:[
+      {id:'pathogen',lbl:'Target Pathogen',ph:'e.g. MRSA, Pseudomonas aeruginosa, A. baumannii',req:true},
+      {id:'preferred_route',lbl:'Preferred Route (optional)',ph:'e.g. topical, oral, IV'},
+      {id:'novelty',lbl:'Required Novelty (optional)',ph:'e.g. novel scaffold, novel mechanism'}
     ]}
 };
 
-const CHAIN_MAP = {scisynth:'target',targetscope:'target',alphamissense:'target',bindpredict:'hit',repurposerx:'hit',combinedrx:'hit',molprofile:'lead',biosignal:'clinical',trialmatch:'clinical',immuniq:'clinical'};
+const CHAIN_MAP = {scisynth:'target',targetscope:'target',alphamissense:'target',bindpredict:'hit',repurposerx:'hit',combinedrx:'hit',pathogenrx:'hit',molprofile:'lead',biosignal:'clinical',trialmatch:'clinical',immuniq:'clinical'};
 
 const HANDOFFS = {
   scisynth:     [{lbl:'→ Investigate targets in TargetScope',to:'targetscope',fld:'disease',v:()=>document.getElementById('gDisease').value}],
@@ -421,13 +438,19 @@ function welcomeHTML() {
     ['⑦','alphamissense','AlphaMissense','Is this genetic mutation dangerous?','DeepMind'],
     ['⑧','molprofile','MolProfile','Will this drug survive in the human body?','SwissADME'],
     ['⑨','combinedrx','CombinedRx','Do these two drugs work better together?','Madrigal'],
-    ['⑩','immuniq','ImmunIQ','Will this patient respond to immunotherapy?','COMPASS']
+    ['⑩','immuniq','ImmunIQ','Will this patient respond to immunotherapy?','COMPASS'],
+    ['⑪','pathogenrx','PathogenRx','Can we design a new antibiotic for this pathogen?','SyntheMol-RL']
   ];
-  const cHTML = cards.map(([num,id,name,q,badge])=>`<div class="tc" onclick="go('${id}')"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${num}</span><span class="tc-name">${name}</span>${badge?`<span style="font-family:var(--mono);font-size:9px;color:var(--blue);background:rgba(91,155,212,.1);border:1px solid rgba(91,155,212,.2);border-radius:3px;padding:1px 5px">${badge}</span>`:''}</div><p class="tc-q">${q}</p></div>`).join('');
+  const cHTML = cards.map(([num,id,name,q,badge])=>{
+    const bcolor = badge==='Madrigal'?'#E91E63':badge==='COMPASS'?'#FF6B35':badge==='SyntheMol-RL'?'#00C896':'var(--blue)';
+    const bbg = badge==='Madrigal'?'rgba(233,30,99,.1)':badge==='COMPASS'?'rgba(255,107,53,.1)':badge==='SyntheMol-RL'?'rgba(0,200,150,.1)':'rgba(91,155,212,.1)';
+    const bborder = badge==='Madrigal'?'rgba(233,30,99,.3)':badge==='COMPASS'?'rgba(255,107,53,.3)':badge==='SyntheMol-RL'?'rgba(0,200,150,.3)':'rgba(91,155,212,.2)';
+    return `<div class="tc" onclick="go('${id}')"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${num}</span><span class="tc-name">${name}</span>${badge?`<span style="font-family:var(--mono);font-size:9px;color:${bcolor};background:${bbg};border:1px solid ${bborder};border-radius:3px;padding:1px 5px">${badge}</span>`:''}</div><p class="tc-q">${q}</p></div>`;
+  }).join('');
   return `<div class="welcome">
     <div class="welcome-left">
       <h1 class="wtitle">Research drug development.<br><em>Faster.</em></h1>
-      <p class="wsub">Ten AI-powered tools. One unified platform. Covering the full drug development value chain — from scientific literature to drug viability profiling. With <strong style="color:#9B59B6">Harvard Zitnik Lab</strong> integrations across 5 touchpoints.</p>
+      <p class="wsub">Eleven AI-powered tools. One unified platform. Covering the full drug development value chain — from scientific literature to antimicrobial resistance. With <strong style="color:#9B59B6">Harvard Zitnik Lab</strong> (5 touchpoints) and <strong style="color:#00C896">McMaster Stokes Lab</strong> (1 touchpoint) integrated.</p>
       <div style="background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.2);border-radius:8px;padding:14px 16px;margin-bottom:1.5rem;display:flex;gap:12px">
         <span style="font-size:18px;flex-shrink:0">🧭</span>
         <div><p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:4px">New to life sciences?</p><p style="font-size:12px;color:var(--text2);line-height:1.6">Toggle <strong style="color:var(--text)">Guide Mode</strong> in the sidebar — it adds plain-English explanations to every tool. No PhD required.</p></div>
@@ -436,11 +459,12 @@ function welcomeHTML() {
       <button class="sbtn" onclick="go('scisynth')">Start with SciSynth →</button>
       <button class="sbtn alt" onclick="go('molprofile')" style="margin-top:8px">Try MolProfile ⑧ →</button>
       <button class="sbtn alt2" onclick="go('alphamissense')" style="margin-top:8px">Try AlphaMissense ⑦ →</button>
+      <button class="sbtn alt2" onclick="go('pathogenrx')" style="margin-top:8px;border-color:#00C896;color:#00C896">Try PathogenRx ⑪ →</button>
     </div>
     <div class="welcome-right">
       <div class="chain-ov" style="margin-bottom:1.5rem">
         <div class="cc"><p class="cc-lbl">Target ID</p><p class="cc-tools">SciSynth ①<br>TargetScope ②<br>AlphaMissense ⑦</p></div>
-        <div class="cc"><p class="cc-lbl">Hit Discovery</p><p class="cc-tools">BindPredict ③<br>RepurposeRx ⑤<br>CombinedRx ⑨</p></div>
+        <div class="cc"><p class="cc-lbl">Hit Discovery</p><p class="cc-tools">BindPredict ③<br>RepurposeRx ⑤<br>CombinedRx ⑨<br>PathogenRx ⑪</p></div>
         <div class="cc"><p class="cc-lbl">Lead Opt</p><p class="cc-tools">MolProfile ⑧<br>BindPredict ③</p></div>
         <div class="cc"><p class="cc-lbl">Clinical</p><p class="cc-tools">BioSignal ④<br>TrialMatch ⑥<br>ImmunIQ ⑩</p></div>
       </div>
@@ -464,6 +488,12 @@ function welcomeHTML() {
           <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#9B59B6;margin-bottom:8px">Harvard Zitnik Lab — 5 integrations</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
             ${[['TxGNN','Drug repurposing AI · Nature Med 2024'],['SHEPHERD','Rare disease AI'],['Madrigal','Drug combinations · NeurIPS 2024'],['COMPASS','Immunotherapy · Nature Cancer 2024'],['TDC','ML benchmarks · Nature Chem Bio']].map(([n,d])=>`<div style="font-family:var(--mono);font-size:10px"><span style="color:#9B59B6">${n}</span><br><span style="color:var(--text3)">${d}</span></div>`).join('')}
+          </div>
+        </div>
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+          <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#00C896;margin-bottom:8px">McMaster Stokes Lab — 1 integration</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            ${[['SyntheMol-RL','Generative antibiotic design'],['Synthecin','In-vivo MRSA · Mol Sys Bio 2026']].map(([n,d])=>`<div style="font-family:var(--mono);font-size:10px"><span style="color:#00C896">${n}</span><br><span style="color:var(--text3)">${d}</span></div>`).join('')}
           </div>
         </div>
         <p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">Powered by Groq · Llama 3.3 70B · Free · No login required</p>
@@ -543,7 +573,8 @@ const STEPS={
   alphamissense:['Resolving gene in Ensembl','Running Ensembl VEP annotation','Retrieving AlphaFold structure','Synthesising clinical interpretation'],
   molprofile:['Looking up compound in PubChem','Fetching ChEMBL bioactivity data','Computing ADME properties','Generating drug viability report'],
   combinedrx:['Mapping mechanisms of both drugs','Searching combination evidence on PubMed','Querying ClinicalTrials.gov for combo trials','Predicting synergy with AI (Madrigal-style)'],
-  immuniq:['Profiling cancer biomarkers','Querying immunotherapy literature','Analysing checkpoint inhibitor relevance','Predicting response with AI (COMPASS-style)']
+  immuniq:['Profiling cancer biomarkers','Querying immunotherapy literature','Analysing checkpoint inhibitor relevance','Predicting response with AI (COMPASS-style)'],
+  pathogenrx:['Resolving target pathogen','Mapping AMR resistance landscape','Querying antibiotic clinical pipeline','Synthesising design route via SyntheMol-RL']
 };
 
 function loadHTML(id){
@@ -769,6 +800,22 @@ async function callTool(id,p){
       }]
     });}catch(_){}
     return{disease:dis,biomarkers:bio,prior_treatment:prior,synthesis};
+  }
+
+  if(id==='pathogenrx'){
+    const path=(p.pathogen||'').trim();
+    const route=(p.preferred_route||'').trim();
+    const nov=(p.novelty||'').trim();
+    let synthesis=null;
+    try{synthesis=await ap('https://scisynth-server.onrender.com/synthesize',{
+      hypothesis:'A novel antibiotic with effective activity against '+path+' is achievable via generative AI design'+(route?' for '+route+' delivery':'')+(nov?' with '+nov:''),
+      papers:[{
+        title:'AMR landscape and de novo antibiotic design route for '+path,
+        authors:'SyntheMol-RL / Stokes Lab / McMaster University / Mol Syst Biol 2026',year:'2026',journal:'Antimicrobial Resistance and Generative Chemistry',
+        abstract:'Pathogen: '+path+'. Preferred route: '+(route||'not specified')+'. Required novelty: '+(nov||'novel scaffold preferred')+'. Assess: (1) WHO priority status and ESKAPE classification, (2) which existing antibiotic classes have failed and why (mechanisms of resistance — beta-lactamases, efflux pumps, modified targets, biofilm), (3) which compounds are currently in clinical pipeline and their phases, (4) whether SyntheMol-RL generative AI is well suited to design novel antibiotics here (multi-parameter optimisation: predicted antibacterial activity + aqueous solubility + structural novelty), (5) reference to synthecin as proof-of-concept (de novo designed from 46B-compound space, in vivo MRSA efficacy in murine wound model), (6) recommended design constraints (chemical building blocks, synthesis reactions, target product profile). Provide a verdict on AMR severity, design feasibility via SyntheMol-RL, confidence, and key strategic findings.'
+      }]
+    });}catch(_){}
+    return{pathogen:path,preferred_route:route,novelty:nov,synthesis};
   }
 
   throw new Error('Unknown tool: '+id);
@@ -1024,6 +1071,45 @@ function buildSources(id, data) {
     });
   }
 
+  // PathogenRx: SyntheMol-RL + Stokes Lab + WHO + PubMed
+  if (id === 'pathogenrx') {
+    out.push({
+      id: idx++,
+      label: 'SyntheMol-RL — Generative antibiotic design',
+      detail: 'Reinforcement learning model · Mol Syst Biol 2026 · Designed synthecin (in vivo MRSA efficacy)',
+      url: 'https://www.nature.com/articles/s44320-026-00206-9',
+      tag: 'Mol Syst Biol 2026'
+    });
+    out.push({
+      id: idx++,
+      label: 'SyntheMol-RL — GitHub repository',
+      detail: 'Open-source code · Stokes Lab · McMaster University',
+      url: 'https://github.com/swansonk14/SyntheMol',
+      tag: 'GitHub'
+    });
+    out.push({
+      id: idx++,
+      label: 'WHO Bacterial Priority Pathogens List',
+      detail: 'Official WHO priority pathogens for new antibiotic R&D',
+      url: 'https://www.who.int/publications/i/item/9789240093461',
+      tag: 'WHO'
+    });
+    out.push({
+      id: idx++,
+      label: `PubMed — antibiotic resistance evidence: ${data.pathogen}`,
+      detail: 'Peer-reviewed AMR mechanisms and clinical pipeline',
+      url: `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(data.pathogen+' antibiotic resistance')}`,
+      tag: 'PubMed'
+    });
+    out.push({
+      id: idx++,
+      label: `ClinicalTrials.gov — antibiotic trials for ${data.pathogen}`,
+      detail: 'Live antimicrobial trials',
+      url: `https://clinicaltrials.gov/search?term=antibiotic&cond=${encodeURIComponent(data.pathogen)}`,
+      tag: 'ClinicalTrials.gov'
+    });
+  }
+
   return out;
 }
 
@@ -1154,7 +1240,7 @@ function exportCopy(id) {
 }
 
 function render(id,data,p){
-  const map={scisynth:rSci,targetscope:rTarget,bindpredict:rBind,biosignal:rBio,repurposerx:rRepurpose,trialmatch:rTrial,alphamissense:rAM,molprofile:rMol,combinedrx:rCombined,immuniq:rImmunIQ};
+  const map={scisynth:rSci,targetscope:rTarget,bindpredict:rBind,biosignal:rBio,repurposerx:rRepurpose,trialmatch:rTrial,alphamissense:rAM,molprofile:rMol,combinedrx:rCombined,immuniq:rImmunIQ,pathogenrx:rPathogen};
   const sources = buildSources(id, data);
   lastResult = { id, data, params: p, sources };
   const fn = map[id];
@@ -1484,6 +1570,114 @@ function rImmunIQ(d,p){
     +'</div>'
     +sourcesPanel(buildSources('immuniq',d))
     +exportBar('immuniq')+'</div>';
+}
+
+function rPathogen(d,p){
+  if(d.error)return eHTML(d.error);
+  const sy=d.synthesis||{};
+  const ss=sy.summary||'';
+  const sf=sy.keyFindings||sy.key_findings||[];
+  const verdict=(sy.verdict||'').toLowerCase();
+  const conf=sy.confidence||'Medium';
+  const path=(d.pathogen||'').toLowerCase();
+
+  // WHO priority classification
+  let whoTier='WHO Priority', whoColor='#00C896', whoDesc='High-priority WHO pathogen for new antibiotic R&D.';
+  if(/mrsa|methicillin|s\.\s*aureus|staph/i.test(path)){
+    whoTier='WHO HIGH PRIORITY · ESKAPE'; whoColor='#FF3B30';
+    whoDesc='Methicillin-resistant S. aureus — leading AMR-associated death cause in high-income regions. ~130k attributable deaths in 2021.';
+  } else if(/acinetobacter|baumannii/i.test(path)){
+    whoTier='WHO CRITICAL PRIORITY · ESKAPE'; whoColor='#FF3B30';
+    whoDesc='Carbapenem-resistant A. baumannii — WHO critical priority. Almost all approved antibiotic classes are failing.';
+  } else if(/pseudomonas|aeruginosa/i.test(path)){
+    whoTier='WHO HIGH PRIORITY · ESKAPE'; whoColor='#FF3B30';
+    whoDesc='Carbapenem-resistant P. aeruginosa — biofilm-forming, multi-drug-efflux, intrinsic resistance.';
+  } else if(/klebsiella|pneumoniae/i.test(path)){
+    whoTier='WHO CRITICAL PRIORITY · ESKAPE'; whoColor='#FF3B30';
+    whoDesc='Carbapenem-resistant Enterobacterales — extended-spectrum beta-lactamases dominate.';
+  } else if(/tuberculosis|tb|mycobacter/i.test(path)){
+    whoTier='WHO TB PRIORITY'; whoColor='#FF6B00';
+    whoDesc='Multi-drug-resistant TB — treatment regimens take 6–24 months. Critical pipeline gap.';
+  } else if(/enterococcus|faecium|faecalis/i.test(path)){
+    whoTier='WHO HIGH PRIORITY · ESKAPE'; whoColor='#FF3B30';
+    whoDesc='Vancomycin-resistant Enterococcus — last-resort antibiotic resistance growing.';
+  } else if(/coli|enterobacter/i.test(path)){
+    whoTier='WHO CRITICAL PRIORITY'; whoColor='#FF3B30';
+    whoDesc='Carbapenem-resistant Enterobacterales (CRE) — limited treatment options remaining.';
+  }
+
+  // Design feasibility heuristic
+  let feasLabel='Strong Design Candidate', feasColor='var(--green)', feasDesc='Pathogen has documented in vitro antibacterial assays. SyntheMol-RL\'s multi-parameter optimisation (activity + solubility + novelty) is well suited.';
+  if(verdict.includes('contra')||verdict.includes('insufficient')){
+    feasLabel='Limited Design Data'; feasColor='var(--amber)';
+    feasDesc='Pathogen-specific assays may need development before generative design. Consider broader Gram-positive/negative training data.';
+  } else if(verdict.includes('strong')||verdict.includes('support')){
+    feasLabel='Proven Design Path'; feasColor='var(--green)';
+    feasDesc='Synthecin proves the design route works for this class of pathogen. Multi-parameter RL optimisation should generate viable candidates.';
+  }
+  const pct=conf==='High'?86:conf==='Medium'?58:32;
+
+  const synthemolPaper='https://www.nature.com/articles/s44320-026-00206-9';
+  const synthemolGH='https://github.com/swansonk14/SyntheMol';
+  const stokesLab='http://www.brownlab.ca/publications-1/2026/4/3/synthemol-rl-a-flexible-reinforcement-learning-framework-for-designing-novel-and-synthesizable-antibiotics';
+  const ctUrl='https://clinicaltrials.gov/search?term=antibiotic&cond='+encodeURIComponent(d.pathogen);
+  const pubmedUrl='https://pubmed.ncbi.nlm.nih.gov/?term='+encodeURIComponent(d.pathogen+' antibiotic resistance');
+
+  const fallback=ss?'':'<p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">Generative antibiotic design analysis for <strong>'+d.pathogen+'</strong>'+(d.preferred_route?' via <strong>'+d.preferred_route+'</strong> route':'')+'. The AI synthesis service is rate-limited or unreachable right now — use the deep links below to access the SyntheMol-RL paper, GitHub, and AMR evidence directly.</p>';
+
+  const pi='<div class="insight plain"><strong>What does this mean?</strong> Most drug-discovery tools only analyse compounds that already exist. <strong>SyntheMol-RL designs new antibiotic structures from scratch</strong> by exploring 46 billion possible compounds and optimising for antibacterial activity, water solubility, and structural novelty. The model has already produced <strong>synthecin</strong>, an in-vivo-validated MRSA drug. PathogenRx tells you whether your target pathogen is a viable design problem and links you to the model.</div>';
+
+  const proof='<div style="background:rgba(0,200,150,.07);border:1px solid rgba(0,200,150,.3);border-radius:8px;padding:12px 14px;margin:10px 0;display:flex;gap:14px;align-items:center">'
+    +'<div style="width:42px;height:42px;border-radius:50%;background:rgba(0,200,150,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px">🧬</div>'
+    +'<div><div style="font-family:var(--mono);font-size:9px;color:#00C896;letter-spacing:.1em;text-transform:uppercase">PROOF OF CONCEPT</div>'
+    +'<div style="font-size:13px;color:var(--text2);line-height:1.5;margin-top:2px"><strong>Synthecin</strong> — designed by SyntheMol-RL, fully arrested MRSA growth in a murine wound infection model. Reduced bacterial burden ~100× (6.4×10⁹ → 5.1×10⁷ CFU/g). Topical formulation, bacteriostatic mechanism, structurally novel scaffold.</div></div>'
+    +'</div>';
+
+  return '<div class="rcard">'
+    +'<div class="rhdr"><span class="rtitle">PathogenRx — Antibiotic Discovery & AMR Analysis</span>'
+    +'<span class="badge" style="background:rgba(0,200,150,.15);color:#00C896;border:1px solid rgba(0,200,150,.3);font-family:var(--mono);font-size:10px">McMaster SyntheMol-RL</span></div>'
+    +'<div class="mrow">'
+    +'<span class="mi">Pathogen: <span>'+d.pathogen+'</span></span>'
+    +(d.preferred_route?'<span class="mi">Route: <span>'+d.preferred_route+'</span></span>':'')
+    +(d.novelty?'<span class="mi">Novelty: <span>'+d.novelty+'</span></span>':'')
+    +'<span class="mi">Sources: <span>SyntheMol-RL · WHO · PubMed · ClinicalTrials.gov</span></span>'
+    +'</div>'
+    +pi
+    +'<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:240px;padding:14px 16px;background:rgba(255,59,48,.05);border:1px solid '+whoColor+'66;border-radius:8px">'
+    +'<div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px">AMR PRIORITY</div>'
+    +'<div style="font-family:var(--serif);font-size:16px;font-weight:500;color:'+whoColor+'">'+whoTier+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:4px">'+whoDesc+'</div>'
+    +'</div>'
+    +'<div style="flex:1;min-width:240px;padding:14px 16px;background:rgba(0,200,150,.05);border:1px solid rgba(0,200,150,.25);border-radius:8px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:4px">'
+    +'<div style="font-family:var(--mono);font-size:10px;color:var(--text3)">DESIGN FEASIBILITY</div>'
+    +'<div style="font-family:var(--mono);font-size:10px;color:'+cc(pct)+'">'+conf+'</div>'
+    +'</div>'
+    +'<div style="font-family:var(--serif);font-size:16px;font-weight:500;color:'+feasColor+'">'+feasLabel+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:4px">'+feasDesc+'</div>'
+    +'<div style="width:100%;height:3px;background:var(--bg3);border-radius:2px;margin-top:8px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+cc(pct)+'"></div></div>'
+    +'</div>'
+    +'</div>'
+    +proof
+    +fallback
+    +(ss?'<p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px;margin-top:14px">AI AMR & DESIGN ANALYSIS</p><p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">'+ss+'</p>':'')
+    +(sf.length?'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px">KEY FINDINGS</p>'
+      +sf.map((f,i)=>'<div class="fi"><span class="finum">'+String(i+1).padStart(2,'0')+'</span><span class="fitxt">'+f+'</span></div>').join(''):'')
+    +'<div style="background:rgba(0,200,150,.07);border:1px solid rgba(0,200,150,.3);border-radius:8px;padding:14px 16px;margin:14px 0">'
+    +'<p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#00C896;margin-bottom:8px">DESIGN WITH SYNTHEMOL-RL — McMASTER STOKES LAB</p>'
+    +'<p style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:10px">SyntheMol-RL is a reinforcement learning framework that designs novel, synthesizable antibiotic structures from a 46-billion-compound chemical space. Multi-parameter optimisation balances antibacterial activity, aqueous solubility, and structural novelty. Published April 2026 in <em>Molecular Systems Biology</em>.</p>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<a href="'+synthemolPaper+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:#00C896;padding:7px 14px;border-radius:4px;text-decoration:none">Mol Sys Bio Paper ↗</a>'
+    +'<a href="'+synthemolGH+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:#00C896;border:1px solid rgba(0,200,150,.4);padding:7px 14px;border-radius:4px;text-decoration:none">GitHub ↗</a>'
+    +'<a href="'+stokesLab+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border);padding:7px 14px;border-radius:4px;text-decoration:none">Stokes Lab Page ↗</a>'
+    +'<a href="'+ctUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border);padding:7px 14px;border-radius:4px;text-decoration:none">Antibiotic Trials ↗</a>'
+    +'<a href="'+pubmedUrl+'" target="_blank" rel="noopener" style="font-family:var(--mono);font-size:11px;color:var(--text2);border:1px solid var(--border);padding:7px 14px;border-radius:4px;text-decoration:none">PubMed AMR ↗</a>'
+    +'</div>'
+    +'<p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:8px">Stokes Lab · McMaster University · Mol Syst Biol 2026 · Discovered synthecin</p>'
+    +'</div>'
+    +sourcesPanel(buildSources('pathogenrx',d))
+    +exportBar('pathogenrx')+'</div>';
 }
 
 

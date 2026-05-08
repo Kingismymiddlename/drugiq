@@ -6,6 +6,14 @@
 <title>DrugIQ — Research drug development, faster</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+<!-- Google Analytics 4 — replace G-XXXXXXXXXX with your Measurement ID from analytics.google.com -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
 <style>
 :root{--bg:#0a0e0b;--bg2:#0f1510;--bg3:#141c15;--surface:#1a2318;--surface2:#1f2b1f;--border:rgba(74,180,100,.15);--border2:rgba(74,180,100,.25);--green:#4ab464;--gdim:rgba(74,180,100,.08);--glow:rgba(74,180,100,.12);--text:#e8f0e8;--text2:#8fa88f;--text3:#566356;--amber:#d4a843;--red:#c45c5c;--blue:#5b9bd4;--teal:#45b3a2;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--serif:'Fraunces',serif}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -230,10 +238,9 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
   <div class="logo"><div class="logo-dot"></div><span class="logo-txt">Drug<b>IQ</b></span></div>
   <div class="divv"></div>
   <div class="ctx-bar">
-    <span class="ctx-lbl">Disease:</span>
     <div class="ctx-wrap">
       <svg class="ctx-ico" viewBox="0 0 16 16"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="14" y2="14"/></svg>
-      <input id="gDisease" class="ctx-in" type="text" placeholder="e.g. Non-small cell lung cancer">
+      <input id="gDisease" class="ctx-in" type="text" placeholder="Disease context">
     </div>
     <span id="stageBadge" class="stage-badge" style="display:none"></span>
   </div>
@@ -269,18 +276,6 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
         <div class="carr"></div>
         <div class="cstep"><div class="cdot" id="cd-clinical"></div><span class="clbl" id="cl-clinical">Clinical Trials</span></div>
       </div>
-    </div>
-    <div class="ss">
-      <p class="ss-lbl">DeepMind APIs</p>
-      <div style="padding:0 4px;font-family:var(--mono);font-size:10px;color:var(--text3);line-height:1.8">AlphaFold DB <span style="color:var(--blue)">③</span><br>AlphaMissense <span style="color:var(--blue)">⑦</span></div>
-    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-      <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:4px">Harvard Zitnik Lab</p>
-      <p style="font-family:var(--mono);font-size:10px;color:#9B59B6;line-height:1.6">TxGNN ⑤<br>SHEPHERD ⑥<br>Madrigal ⑨<br>COMPASS ⑩<br>TDC ⑧</p>
-    </div>
-    <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
-      <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:4px">McMaster Stokes Lab</p>
-      <p style="font-family:var(--mono);font-size:10px;color:#00C896;line-height:1.6">SyntheMol-RL ⑪</p>
-    </div>
     </div>
   </nav>
   <main class="content" id="content"></main>
@@ -404,7 +399,7 @@ const HANDOFFS = {
 let guide = false;
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
-function go(id) {
+function go(id, skipHash) {
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
   const b = id==='welcome' ? document.querySelector('.tbtn[onclick*="welcome"]') : document.getElementById('b-'+id);
   if(b) b.classList.add('on');
@@ -416,6 +411,10 @@ function go(id) {
   if(id==='welcome'){ sb.style.display='none'; }
   else { sb.style.display='inline-block'; sb.textContent=T[id].stage; }
   document.getElementById('content').innerHTML = id==='welcome' ? welcomeHTML() : toolHTML(id);
+  if(id !== 'welcome') gtag('event', 'tool_view', {tool_id: id, tool_name: T[id].name});
+  if(!skipHash) location.hash = id==='welcome' ? '' : id;
+  document.getElementById('content').scrollTop = 0;
+  window.scrollTo(0,0);
 }
 
 function toggleGuide() {
@@ -450,11 +449,8 @@ function welcomeHTML() {
   return `<div class="welcome">
     <div class="welcome-left">
       <h1 class="wtitle">Research drug development.<br><em>Faster.</em></h1>
-      <p class="wsub">Eleven AI-powered tools. One unified platform. Covering the full drug development value chain — from scientific literature to antimicrobial resistance. With <strong style="color:#9B59B6">Harvard Zitnik Lab</strong> (5 touchpoints) and <strong style="color:#00C896">McMaster Stokes Lab</strong> (1 touchpoint) integrated.</p>
-      <div style="background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.2);border-radius:8px;padding:14px 16px;margin-bottom:1.5rem;display:flex;gap:12px">
-        <span style="font-size:18px;flex-shrink:0">🧭</span>
-        <div><p style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:4px">New to life sciences?</p><p style="font-size:12px;color:var(--text2);line-height:1.6">Toggle <strong style="color:var(--text)">Guide Mode</strong> in the sidebar — it adds plain-English explanations to every tool. No PhD required.</p></div>
-      </div>
+      <p class="wsub">Eleven AI-powered tools covering the full drug development value chain — from literature synthesis to antimicrobial resistance. Free, no login required.</p>
+      <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:1.5rem">New to life sciences? Toggle <span style="color:var(--amber);cursor:pointer" onclick="toggleGuide()">Guide Mode</span> in the sidebar for plain-English explanations on every tool.</p>
       <div class="tgrid">${cHTML}</div>
       <button class="sbtn" onclick="go('scisynth')">Start with SciSynth →</button>
       <button class="sbtn alt" onclick="go('molprofile')" style="margin-top:8px">Try MolProfile ⑧ →</button>
@@ -479,25 +475,7 @@ function welcomeHTML() {
         <div class="dstep"><span class="dsnum">07</span><span><strong>BioSignal</strong> → biomarker panel for patient stratification</span></div>
         <div class="dstep"><span class="dsnum">08</span><span><strong>TrialMatch</strong> → 58yo male NSCLC → matching recruiting trials</span></div>
       </div>
-      <div style="border:1px solid var(--border);border-radius:8px;padding:16px">
-        <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:12px">Data Sources</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          ${[['PubMed','35M+ papers'],['OpenTargets','60K+ diseases'],['ChEMBL','2.4M+ compounds'],['UniProt','250M+ proteins'],['DisGeNET','628K+ associations'],['ClinicalTrials.gov','500K+ trials'],['AlphaFold DB','Structure data'],['AlphaMissense','Variant scores']].map(([n,d])=>`<div style="font-family:var(--mono);font-size:10px"><span style="color:var(--green)">${n}</span><br><span style="color:var(--text3)">${d}</span></div>`).join('')}
-        </div>
-        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-          <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#9B59B6;margin-bottom:8px">Harvard Zitnik Lab — 5 integrations</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            ${[['TxGNN','Drug repurposing AI · Nature Med 2024'],['SHEPHERD','Rare disease AI'],['Madrigal','Drug combinations · NeurIPS 2024'],['COMPASS','Immunotherapy · Nature Cancer 2024'],['TDC','ML benchmarks · Nature Chem Bio']].map(([n,d])=>`<div style="font-family:var(--mono);font-size:10px"><span style="color:#9B59B6">${n}</span><br><span style="color:var(--text3)">${d}</span></div>`).join('')}
-          </div>
-        </div>
-        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-          <p style="font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:#00C896;margin-bottom:8px">McMaster Stokes Lab — 1 integration</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-            ${[['SyntheMol-RL','Generative antibiotic design'],['Synthecin','In-vivo MRSA · Mol Sys Bio 2026']].map(([n,d])=>`<div style="font-family:var(--mono);font-size:10px"><span style="color:#00C896">${n}</span><br><span style="color:var(--text3)">${d}</span></div>`).join('')}
-          </div>
-        </div>
-        <p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">Powered by Groq · Llama 3.3 70B · Free · No login required</p>
-      </div>
+      <p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px">Powered by Groq · Llama 3.3 70B · Free · No login required</p>
     </div>
   </div>`;
 }
@@ -515,10 +493,10 @@ function toolHTML(id) {
   const howHTML = `<div class="how-steps">${t.how.map((s,i)=>`<div class="hstep"><div class="hstep-n">STEP ${i+1}</div><div class="hstep-t">${s}</div></div>`).join('')}</div>`;
   const chipsHTML = `<div class="chips"><span style="font-family:var(--mono);font-size:10px;color:var(--text3);padding-top:4px">Try:</span>${t.ex.map((e,i)=>`<span class="chip" data-id="${id}" data-i="${i}" onclick="applyEx(this)">${e}</span>`).join('')}</div>`;
   const tagsHTML = t.tags.map(tg=>`<span class="tag">${tg}</span>`).join('');
-  return `<div style="margin-bottom:1.5rem">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px">
+  return `<div style="margin-bottom:1.25rem">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px">
       <div><h2 class="ttl">${t.name} — <span>${t.sub}</span></h2><div>${tagsHTML}</div></div>
-      <button class="ptoggle ${guide?'on':''}" onclick="toggleGuide()">${guide?'📖 Plain English: On':'📖 Plain English'}</button>
+      <button class="ptoggle ${guide?'on':''}" onclick="toggleGuide()">${guide?'📖 Guide: On':'📖 Guide'}</button>
     </div>
     <div class="edu-banner plain"><span class="edu-ico">💡</span><div><p class="edu-t">What does this tool do?</p><p class="edu-txt">${t.plain}</p></div></div>
     <p class="tdesc expert">${t.desc}</p>
@@ -599,8 +577,9 @@ async function run(id){
   if(!ok){out.innerHTML=eHTML('Please fill in all required fields.',true);return;}
   if(p.disease) document.getElementById('gDisease').value=p.disease;
   btn.disabled=true; out.innerHTML=loadHTML(id);
-  try{const [res]=await Promise.all([callTool(id,p),animSteps(id)]);out.innerHTML=render(id,res,p);}
-  catch(e){out.innerHTML=eHTML(e.message||'Unknown error');}
+  gtag('event', 'tool_run', {tool_id: id, tool_name: T[id].name});
+  try{const [res]=await Promise.all([callTool(id,p),animSteps(id)]);out.innerHTML=render(id,res,p);gtag('event', 'tool_result', {tool_id: id, tool_name: T[id].name, success: true});}
+  catch(e){out.innerHTML=eHTML(e.message||'Unknown error');gtag('event', 'tool_result', {tool_id: id, tool_name: T[id].name, success: false, error: e.message});}
   btn.disabled=false;
 }
 
@@ -1813,8 +1792,17 @@ function changeViewMode(scope, mode) {
   });
 }
 
+// ── ROUTING ───────────────────────────────────────────────────────────────────
+window.addEventListener('hashchange', () => {
+  const id = location.hash.replace(/^#/, '') || 'welcome';
+  if (id === 'welcome' || T[id]) go(id, true);
+});
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
-go('welcome');
+(function() {
+  const id = location.hash.replace(/^#/, '') || 'welcome';
+  go((id === 'welcome' || T[id]) ? id : 'welcome', true);
+})();
 </script>
 </body>
 </html>

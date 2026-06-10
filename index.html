@@ -373,10 +373,84 @@ body.app-active #landing-view{display:none}
   .lp-nav-links a:not(.lp-cta-sm){display:none}
   .ft-visual{max-width:380px;justify-self:center}
 }
+/* ════════════════════════════════════════════════════════════════════════════
+   AI ASSISTANT (chatbot)
+   ════════════════════════════════════════════════════════════════════════════ */
+#cbot-launch{position:fixed;bottom:24px;right:24px;z-index:500;width:56px;height:56px;border-radius:50%;
+  background:var(--green);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 30px -8px rgba(74,180,100,.6);transition:transform .25s, box-shadow .25s}
+#cbot-launch:hover{transform:scale(1.07) translateY(-2px);box-shadow:0 16px 40px -8px rgba(74,180,100,.7)}
+#cbot-launch svg{width:26px;height:26px}
+#cbot-launch .cbot-badge{position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;background:var(--amber);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;font-size:9px;color:#07120a;font-weight:700}
+#cbot-launch.hide{opacity:0;pointer-events:none;transform:scale(.6)}
+#cbot-panel{position:fixed;bottom:24px;right:24px;z-index:600;width:min(400px,calc(100vw - 32px));height:min(620px,calc(100vh - 48px));
+  background:var(--bg2);border:1px solid var(--border2);border-radius:18px;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 30px 80px -20px rgba(0,0,0,.7);opacity:0;transform:translateY(20px) scale(.97);pointer-events:none;
+  transition:opacity .3s ease, transform .3s ease}
+#cbot-panel.open{opacity:1;transform:translateY(0) scale(1);pointer-events:all}
+.cbot-hdr{display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(74,180,100,.08),transparent);flex-shrink:0}
+.cbot-hdr .cb-ava{width:34px;height:34px;border-radius:50%;background:var(--gdim);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cbot-hdr .cb-meta{flex:1;min-width:0}
+.cbot-hdr .cb-name{font-family:var(--serif);font-size:15px;font-weight:500;color:var(--text);line-height:1.1}
+.cbot-hdr .cb-stat{font-family:var(--mono);font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px;margin-top:2px}
+.cbot-hdr .cb-stat i{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.cbot-hdr .cb-x{background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;padding:0 4px;line-height:1}
+.cbot-hdr .cb-x:hover{color:var(--text)}
+.cbot-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
+.cbot-body::-webkit-scrollbar{width:6px}.cbot-body::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.cb-msg{display:flex;gap:9px;max-width:100%;animation:cbIn .35s ease}
+@keyframes cbIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.cb-msg .cb-bubble{padding:11px 14px;border-radius:14px;font-size:13.5px;line-height:1.6;max-width:84%}
+.cb-msg.bot .cb-bubble{background:var(--surface);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:4px}
+.cb-msg.user{justify-content:flex-end}
+.cb-msg.user .cb-bubble{background:var(--green);color:#07120a;border-bottom-right-radius:4px;font-weight:500}
+.cb-bubble strong{color:var(--green);font-weight:600}
+.cb-msg.user .cb-bubble strong{color:#07120a}
+.cb-bubble code{font-family:var(--mono);font-size:12px;background:var(--bg3);padding:1px 5px;border-radius:4px}
+.cb-action{display:inline-flex;align-items:center;gap:7px;margin-top:10px;font-family:var(--mono);font-size:12px;font-weight:600;
+  background:var(--gdim);border:1px solid var(--border2);color:var(--green);border-radius:9px;padding:9px 14px;cursor:pointer;transition:all .2s;text-decoration:none}
+.cb-action:hover{background:var(--glow);border-color:var(--green);transform:translateX(2px)}
+.cb-typing{display:flex;gap:4px;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;width:fit-content}
+.cb-typing i{width:7px;height:7px;border-radius:50%;background:var(--text3);animation:cbBlink 1.4s infinite both}
+.cb-typing i:nth-child(2){animation-delay:.2s}.cb-typing i:nth-child(3){animation-delay:.4s}
+@keyframes cbBlink{0%,80%,100%{opacity:.25;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
+.cb-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.cb-chip{font-family:var(--mono);font-size:11px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:7px 12px;cursor:pointer;transition:all .2s}
+.cb-chip:hover{border-color:var(--green);color:var(--green);background:var(--gdim)}
+.cbot-foot{flex-shrink:0;border-top:1px solid var(--border);padding:12px;display:flex;gap:9px;align-items:flex-end;background:var(--bg2)}
+.cbot-foot textarea{flex:1;resize:none;background:var(--bg3);border:1px solid var(--border);border-radius:11px;color:var(--text);
+  font-family:var(--sans);font-size:13.5px;padding:10px 12px;max-height:96px;line-height:1.5;outline:none}
+.cbot-foot textarea:focus{border-color:var(--border2)}
+.cbot-foot textarea::placeholder{color:var(--text3)}
+.cbot-foot .cb-send{flex-shrink:0;width:38px;height:38px;border-radius:10px;background:var(--green);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .2s}
+.cbot-foot .cb-send:disabled{opacity:.4;cursor:default}
+.cbot-foot .cb-send svg{width:16px;height:16px}
+.cb-disclaim{font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;padding:0 12px 8px;background:var(--bg2)}
+@media(max-width:520px){#cbot-panel{bottom:0;right:0;width:100vw;height:100vh;border-radius:0}#cbot-launch{bottom:16px;right:16px}}
 </style>
 </head>
 <body>
 <div id="veil"></div>
+<button id="cbot-launch" onclick="cbotToggle()" title="Ask the DrugIQ assistant" aria-label="Open assistant">
+  <svg viewBox="0 0 24 24" fill="none"><path d="M12 3C7 3 3 6.5 3 11c0 2.2 1 4.2 2.6 5.6L5 21l4.7-1.6c.7.2 1.5.3 2.3.3 5 0 9-3.5 9-8s-4-8.7-9-8.7Z" stroke="#07120a" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8.5" cy="11.5" r="1.1" fill="#07120a"/><circle cx="12" cy="11.5" r="1.1" fill="#07120a"/><circle cx="15.5" cy="11.5" r="1.1" fill="#07120a"/></svg>
+  <span class="cbot-badge">AI</span>
+</button>
+<div id="cbot-panel" role="dialog" aria-label="DrugIQ assistant">
+  <div class="cbot-hdr">
+    <div class="cb-ava"><svg viewBox="0 0 24 24" width="18" height="18" fill="none"><circle cx="12" cy="12" r="9" stroke="var(--green)" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="var(--green)"/></svg></div>
+    <div class="cb-meta">
+      <div class="cb-name">DrugIQ Assistant</div>
+      <div class="cb-stat"><i></i><span id="cbot-status">Ready to help you navigate</span></div>
+    </div>
+    <button class="cb-x" onclick="cbotToggle()" aria-label="Close">×</button>
+  </div>
+  <div class="cbot-body" id="cbot-body"></div>
+  <div class="cbot-foot">
+    <textarea id="cbot-input" rows="1" placeholder="Ask anything, or describe what you're trying to do…" onkeydown="cbotKey(event)" oninput="cbotGrow(this)"></textarea>
+    <button class="cb-send" id="cbot-send" onclick="cbotSend()" aria-label="Send"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-6 16-3-7-7-1Z" stroke="#07120a" stroke-width="1.6" stroke-linejoin="round" fill="#07120a"/></svg></button>
+  </div>
+  <div class="cb-disclaim">AI guidance for navigating DrugIQ · Research use only</div>
+</div>
 <canvas id="lp-canvas"></canvas>
 <div id="landing-view"></div>
 <div id="app-view">
@@ -2304,6 +2378,221 @@ function changeViewMode(scope, mode) {
   document.querySelectorAll('#viewer-' + scope + '-container .vctrl[data-mode]').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === mode);
   });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// AI ASSISTANT — real-LLM chatbot with tool-aware guidance + deep-link actions
+// Path C: tries /chat endpoint, falls back to /synthesize-smuggling. Honest
+// degraded state when the backend (Render free tier) is asleep.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const CBOT = { open:false, history:[], busy:false, greeted:false };
+
+// Tool catalog the model reasons over. Kept compact but complete.
+const CBOT_TOOLS = [
+  {id:'dossier',name:'Candidate Dossier',what:'Flagship. Full external-evidence review of one drug candidate (target + compound + indication) → cited verdict + External Evidence Score.',fields:'target, compound, indication'},
+  {id:'scisynth',name:'SciSynth',what:'Does the science support a claim? Synthesises PubMed literature into a verdict.',fields:'hypothesis'},
+  {id:'targetscope',name:'TargetScope',what:'Best drug targets for a disease, ranked by genetic evidence (OpenTargets).',fields:'disease'},
+  {id:'bindpredict',name:'BindPredict',what:'Will a compound bind a protein target? Affinity + AlphaFold structure.',fields:'target, compound, disease(optional)'},
+  {id:'biosignal',name:'BioSignal',what:'Biomarkers that signal a disease, evidence-graded.',fields:'disease, biomarker_type(optional)'},
+  {id:'repurposerx',name:'RepurposeRx',what:'Can an existing drug be repurposed for a disease? Links to TxGNN (Harvard).',fields:'disease'},
+  {id:'trialmatch',name:'TrialMatch',what:'Live clinical trials matching a patient/disease. Links to SHEPHERD (Harvard).',fields:'disease, age(optional), gender(optional), current_treatment(optional)'},
+  {id:'alphamissense',name:'AlphaMissense',what:'Is a genetic missense variant dangerous? Pathogenicity (DeepMind).',fields:'gene, variant, disease_context(optional)'},
+  {id:'molprofile',name:'MolProfile',what:'Will a compound survive in the body? ADME, Lipinski, drug-likeness. Links to TDC (Harvard).',fields:'compound, target_context(optional)'},
+  {id:'combinedrx',name:'CombinedRx',what:'Do two drugs work better together? Synergy prediction. Links to Madrigal (Harvard).',fields:'disease, drug1, drug2'},
+  {id:'immuniq',name:'ImmunIQ',what:'Will a patient respond to immunotherapy? Links to COMPASS (Harvard).',fields:'disease, biomarkers(optional), prior_treatment(optional)'},
+  {id:'pathogenrx',name:'PathogenRx',what:'Design a novel antibiotic for a pathogen / AMR strategy. Links to SyntheMol-RL (McMaster).',fields:'pathogen, preferred_route(optional), novelty(optional)'}
+];
+
+function cbotSystemPrompt(){
+  const catalog = CBOT_TOOLS.map(t=>`- ${t.id} ("${t.name}"): ${t.what} Inputs: ${t.fields}.`).join('\n');
+  return `You are the DrugIQ Assistant, a concise, friendly guide embedded in the DrugIQ platform — a drug-discovery research tool with 11 specialised tools plus a flagship Candidate Dossier.
+
+Your job: (1) help users understand what DrugIQ does, (2) recommend the RIGHT tool for their goal, (3) give short "assisted prompts" (concrete example inputs), and (4) when you recommend a tool, emit an ACTION TOKEN so the UI can open it pre-filled.
+
+TOOLS:
+${catalog}
+
+ACTION TOKEN FORMAT — when you want to offer to open a tool, end your message with a token on its own line:
+<<OPEN:toolid|field=value;field=value>>
+Examples:
+<<OPEN:molprofile|compound=Sotorasib>>
+<<OPEN:dossier|target=KRAS;compound=Sotorasib;indication=Non-small cell lung cancer>>
+<<OPEN:trialmatch|disease=Melanoma>>
+Only include fields you actually have. If you have no specific values, still emit the token with just the toolid (e.g. <<OPEN:targetscope>>). Emit at most ONE token per reply, and only when suggesting a tool.
+
+STYLE: 2–4 sentences max. Plain language a non-scientist can follow. Never invent clinical facts or claim DrugIQ designs/approves drugs — it surfaces public evidence and links to external research models. Research use only. If asked something off-topic, gently steer back to drug discovery and the platform.`;
+}
+
+const CBOT_GREETING = "Hi — I'm the DrugIQ assistant. Tell me what you're trying to do and I'll point you to the right tool (and set it up for you). For example: *\"I have a compound and want to check if it's drug-like\"* or *\"find trials for melanoma.\"*";
+const CBOT_CHIPS = [
+  "What can DrugIQ do?",
+  "I have a candidate to analyse",
+  "Find drug targets for a disease",
+  "Check if my compound is drug-like",
+  "Find clinical trials"
+];
+
+function cbotToggle(){
+  CBOT.open=!CBOT.open;
+  document.getElementById('cbot-panel').classList.toggle('open',CBOT.open);
+  document.getElementById('cbot-launch').classList.toggle('hide',CBOT.open);
+  if(CBOT.open){
+    if(!CBOT.greeted){ cbotGreet(); CBOT.greeted=true; }
+    setTimeout(()=>{const i=document.getElementById('cbot-input');i&&i.focus();},320);
+    gtag('event','chatbot_open',{});
+  }
+}
+function cbotGreet(){
+  cbotAddBot(CBOT_GREETING);
+  const body=document.getElementById('cbot-body');
+  const wrap=document.createElement('div'); wrap.className='cb-chips';
+  CBOT_CHIPS.forEach(c=>{const b=document.createElement('button');b.className='cb-chip';b.textContent=c;b.onclick=()=>cbotSend(c);wrap.appendChild(b);});
+  body.appendChild(wrap); body.scrollTop=body.scrollHeight;
+}
+
+function cbotGrow(el){el.style.height='auto';el.style.height=Math.min(96,el.scrollHeight)+'px';}
+function cbotKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();cbotSend();} }
+
+function cbotEsc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function cbotFmt(s){ // light markdown: **bold**, *italic*, `code`
+  return cbotEsc(s)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g,'$1<em>$2</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\n/g,'<br>');
+}
+function cbotAddUser(text){
+  const body=document.getElementById('cbot-body');
+  const m=document.createElement('div');m.className='cb-msg user';
+  m.innerHTML=`<div class="cb-bubble">${cbotEsc(text)}</div>`;
+  body.appendChild(m);body.scrollTop=body.scrollHeight;
+}
+function cbotAddBot(text, action){
+  const body=document.getElementById('cbot-body');
+  const m=document.createElement('div');m.className='cb-msg bot';
+  let actionHTML='';
+  if(action){
+    const label=action.label||('Open '+(CBOT_TOOLS.find(t=>t.id===action.tool)?.name||action.tool));
+    actionHTML=`<a class="cb-action" onclick='cbotAction(${JSON.stringify(action).replace(/'/g,"&#39;")})'>◆ ${cbotEsc(label)} →</a>`;
+  }
+  m.innerHTML=`<div class="cb-bubble">${cbotFmt(text)}${actionHTML}</div>`;
+  body.appendChild(m);body.scrollTop=body.scrollHeight;
+  return m;
+}
+function cbotTyping(on){
+  const body=document.getElementById('cbot-body');
+  let t=document.getElementById('cb-typing');
+  if(on){ if(!t){t=document.createElement('div');t.className='cb-msg bot';t.id='cb-typing';t.innerHTML='<div class="cb-typing"><i></i><i></i><i></i></div>';body.appendChild(t);body.scrollTop=body.scrollHeight;} }
+  else { if(t)t.remove(); }
+}
+
+// Parse <<OPEN:tool|field=value;...>> from model output → {clean, action}
+function cbotParseAction(text){
+  const m=text.match(/<<OPEN:([a-z]+)(?:\|([^>]*))?>>/i);
+  if(!m) return {clean:text.trim(), action:null};
+  const tool=m[1].toLowerCase();
+  if(tool!=='dossier' && !T[tool]) return {clean:text.replace(m[0],'').trim(), action:null};
+  const fields={};
+  if(m[2]){ m[2].split(';').forEach(pair=>{const i=pair.indexOf('=');if(i>0){const k=pair.slice(0,i).trim();const v=pair.slice(i+1).trim();if(k&&v)fields[k]=v;}}); }
+  const clean=text.replace(m[0],'').trim();
+  return {clean, action:{tool,fields}};
+}
+
+// Execute an action: enter app, open tool, pre-fill fields.
+function cbotAction(action){
+  gtag('event','chatbot_action',{tool:action.tool});
+  const tool=action.tool, fields=action.fields||{};
+  const doFill=()=>{
+    Object.entries(fields).forEach(([k,v])=>{
+      const el=document.getElementById((tool==='dossier'?'f-d-':'f-')+k) || document.getElementById('f-'+k);
+      if(el){el.value=v;el.style.borderColor='var(--teal)';}
+    });
+    if(fields.disease){const g=document.getElementById('gDisease');if(g)g.value=fields.disease;}
+    if(fields.indication){const g=document.getElementById('gDisease');if(g)g.value=fields.indication;}
+  };
+  if(document.body.classList.contains('app-active')){ go(tool); setTimeout(doFill,200); }
+  else { enterApp(tool); setTimeout(doFill,800); }
+  // keep the panel but collapse on mobile
+  if(window.innerWidth<=520) cbotToggle();
+}
+
+// The brain. Path C: try /chat, fall back to /synthesize. Real LLM either way.
+const CBOT_CHAT_URL='https://scisynth-server.onrender.com/chat';      // optional future endpoint
+const CBOT_SYNTH_URL='https://scisynth-server.onrender.com/synthesize'; // existing endpoint
+let cbotChatEndpointOk=null; // null=unknown, true/false after first try
+
+async function cbotLLM(userText){
+  CBOT.history.push({role:'user',content:userText});
+  const recent=CBOT.history.slice(-8);
+
+  // Attempt 1: dedicated /chat endpoint (if you add it later, this lights up automatically)
+  if(cbotChatEndpointOk!==false){
+    try{
+      const r=await fetch(CBOT_CHAT_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({system:cbotSystemPrompt(),messages:recent})});
+      if(r.ok){
+        const d=await r.json();
+        const reply=d.reply||d.message||d.content||d.text||'';
+        if(reply){cbotChatEndpointOk=true;CBOT.history.push({role:'assistant',content:reply});return reply;}
+      }
+      if(r.status===404) cbotChatEndpointOk=false; // endpoint doesn't exist → stop trying
+    }catch(_){ /* fall through */ }
+  }
+
+  // Attempt 2: smuggle the conversation through /synthesize (works today, no backend change)
+  const convo=recent.map(m=>(m.role==='user'?'User: ':'Assistant: ')+m.content).join('\n');
+  const r2=await fetch(CBOT_SYNTH_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      hypothesis:'You are answering as the DrugIQ Assistant. Reply to the latest user message conversationally.',
+      papers:[{
+        title:'DrugIQ Assistant conversation',
+        authors:'DrugIQ',year:'2025',journal:'Platform Guidance',
+        abstract: cbotSystemPrompt()+'\n\nCONVERSATION SO FAR:\n'+convo+'\n\nWrite ONLY the assistant\'s next reply (2-4 sentences). If recommending a tool, append the action token on its own line as instructed above.'
+      }]
+    })});
+  if(!r2.ok){ if(r2.status===429) throw new Error('rate_limit'); throw new Error('backend'); }
+  const d2=await r2.json();
+  const reply=(d2.summary||d2.reply||'').trim() || "I'm here to help you navigate DrugIQ — could you rephrase that?";
+  CBOT.history.push({role:'assistant',content:reply});
+  return reply;
+}
+
+// Degraded fallback when the backend is unreachable/asleep: honest message + shortcut chips.
+function cbotDegraded(){
+  const body=document.getElementById('cbot-body');
+  cbotAddBot("My AI brain is waking up or unreachable right now (the free-tier backend sleeps after inactivity). Give it ~30s and retry — or jump straight in with one of these:");
+  const wrap=document.createElement('div');wrap.className='cb-chips';
+  [['Candidate Dossier','dossier'],['TargetScope','targetscope'],['MolProfile','molprofile'],['TrialMatch','trialmatch'],['RepurposeRx','repurposerx']]
+    .forEach(([nm,id])=>{const b=document.createElement('button');b.className='cb-chip';b.textContent=nm+' →';b.onclick=()=>cbotAction({tool:id,fields:{}});wrap.appendChild(b);});
+  body.appendChild(wrap);body.scrollTop=body.scrollHeight;
+}
+
+async function cbotSend(forced){
+  const input=document.getElementById('cbot-input');
+  const text=(forced!=null?forced:input.value).trim();
+  if(!text||CBOT.busy)return;
+  if(forced==null){input.value='';cbotGrow(input);}
+  cbotAddUser(text);
+  CBOT.busy=true;
+  document.getElementById('cbot-send').disabled=true;
+  document.getElementById('cbot-status').textContent='Thinking…';
+  cbotTyping(true);
+  try{
+    const raw=await cbotLLM(text);
+    const {clean,action}=cbotParseAction(raw);
+    cbotTyping(false);
+    cbotAddBot(clean||"Here's something that might help:", action);
+    document.getElementById('cbot-status').textContent='Ready to help you navigate';
+  }catch(e){
+    cbotTyping(false);
+    if(e.message==='rate_limit'){ cbotAddBot("I've hit the AI request limit for a moment — wait ~30 seconds and try again. Meanwhile you can use these:"); }
+    document.getElementById('cbot-status').textContent='Backend unavailable';
+    cbotDegraded();
+    gtag('event','chatbot_error',{error:e.message});
+  }
+  CBOT.busy=false;
+  document.getElementById('cbot-send').disabled=false;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

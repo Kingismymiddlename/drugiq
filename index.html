@@ -6,6 +6,10 @@
 <title>DrugIQ — Research drug development, faster</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+<!-- Landing-page scroll engine: Lenis (smooth scroll) + GSAP/ScrollTrigger (scroll animation) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lenis/1.1.13/lenis.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <!-- Google Analytics 4 — replace G-XXXXXXXXXX with your Measurement ID from analytics.google.com -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
 <script>
@@ -231,11 +235,153 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
 .export-btn.primary{color:var(--green);border-color:rgba(74,180,100,.3);background:var(--gdim)}
 .export-btn.primary:hover{background:var(--glow)}
 @media(max-width:768px){.sidebar{display:none}.content{max-width:100%}.hdr{padding:0 1rem}.ctx-wrap{max-width:160px}.tgrid{grid-template-columns:1fr}.mgrid{grid-template-columns:repeat(3,1fr)}.viewer-body{height:300px}}
+/* ── CANDIDATE DOSSIER (flagship) ───────────────────────────────────────── */
+.tbtn.hero{background:linear-gradient(135deg,rgba(74,180,100,.14),rgba(69,179,162,.10));border:1px solid var(--border2);border-radius:8px;margin-bottom:10px;padding:10px 10px}
+.tbtn.hero .tname{font-weight:600;color:var(--text)}
+.tbtn.hero.on{border-color:var(--green);box-shadow:0 0 0 1px var(--green) inset}
+.tbtn.hero .tnum{color:var(--green)}
+.hero-tag{font-family:var(--mono);font-size:8px;letter-spacing:.08em;color:var(--bg);background:var(--green);border-radius:3px;padding:1px 5px;margin-left:auto;text-transform:uppercase}
+.dh-hero{background:linear-gradient(135deg,rgba(74,180,100,.10),rgba(69,179,162,.05));border:1px solid var(--border2);border-radius:12px;padding:20px 22px;margin-bottom:1.25rem}
+.dh-pill{display:inline-block;font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);background:var(--gdim);border:1px solid var(--border2);border-radius:20px;padding:3px 10px;margin-bottom:10px}
+.dh-title{font-family:var(--serif);font-size:26px;font-weight:500;color:var(--text);line-height:1.15;margin-bottom:8px}
+.dh-title em{font-style:italic;color:var(--green)}
+.dh-sub{font-size:13px;color:var(--text2);line-height:1.6;max-width:680px}
+.dossier-card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;overflow:hidden;margin-bottom:1rem}
+.dossier-top{padding:20px 22px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(74,180,100,.06),transparent)}
+.dossier-top .dt-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.dt-id{font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:.08em}
+.dt-name{font-family:var(--serif);font-size:20px;font-weight:500;color:var(--text)}
+.dt-meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:4px}
+.dt-meta .mi{font-family:var(--mono);font-size:11px;color:var(--text3)}
+.dt-meta .mi span{color:var(--text2)}
+/* score ring */
+.score-wrap{display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:18px 22px;border-bottom:1px solid var(--border)}
+.score-ring{position:relative;width:104px;height:104px;flex-shrink:0}
+.score-ring svg{transform:rotate(-90deg)}
+.score-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num b{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1}
+.score-num small{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:.1em;margin-top:2px}
+.score-verdict{flex:1;min-width:220px}
+.score-verdict .sv-label{font-family:var(--serif);font-size:20px;font-weight:500;margin-bottom:4px}
+.score-verdict .sv-desc{font-size:12.5px;color:var(--text2);line-height:1.6}
+.score-legend{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap}
+.score-legend span{font-family:var(--mono);font-size:9px;color:var(--text3)}
+.score-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+/* dossier sections */
+.dsec{padding:16px 22px;border-bottom:1px solid var(--border)}
+.dsec:last-child{border-bottom:none}
+.dsec-hdr{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.dsec-ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.dsec-t{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text2)}
+.dsec-flag{margin-left:auto;font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.06em;padding:3px 9px;border-radius:20px;text-transform:uppercase}
+.flag-ok{color:var(--green);background:rgba(74,180,100,.1);border:1px solid rgba(74,180,100,.3)}
+.flag-warn{color:var(--amber);background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.3)}
+.flag-bad{color:var(--red);background:rgba(196,92,92,.12);border:1px solid rgba(196,92,92,.35)}
+.flag-na{color:var(--text3);background:var(--bg3);border:1px solid var(--border)}
+.dsec-body{font-size:13px;color:var(--text2);line-height:1.7}
+.dfind{display:flex;gap:10px;padding:7px 0;border-top:1px dashed var(--border)}
+.dfind:first-of-type{border-top:none}
+.dfind .df-k{font-family:var(--mono);font-size:9px;color:var(--text3);min-width:42px;padding-top:2px;flex-shrink:0}
+.dfind .df-v{font-size:12.5px;color:var(--text2);line-height:1.55}
+.cite-ref{font-family:var(--mono);font-size:9px;color:var(--green);background:var(--gdim);border:1px solid var(--border);border-radius:3px;padding:0 4px;margin-left:3px;text-decoration:none;cursor:pointer}
+.cite-ref:hover{background:var(--glow)}
+.dprobe{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;color:var(--text3);padding:3px 0}
+.dprobe i{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dbanner{font-size:11.5px;color:var(--text3);line-height:1.6;padding:12px 22px;background:var(--bg2);border-top:1px solid var(--border)}
+@media(max-width:768px){.score-wrap{flex-direction:column;align-items:flex-start}}
+/* ════════════════════════════════════════════════════════════════════════════
+   LANDING PAGE — cinematic scroll experience
+   ════════════════════════════════════════════════════════════════════════════ */
+html.landing-active{}
+body.landing-active{overflow-x:hidden}
+#app-view{display:none}
+body.app-active #app-view{display:block}
+body.app-active #landing-view{display:none}
+/* page transition veil */
+#veil{position:fixed;inset:0;background:var(--bg);z-index:9999;pointer-events:none;opacity:0;transition:opacity .5s ease}
+#veil.show{opacity:1;pointer-events:all}
+/* landing container */
+#landing-view{position:relative;width:100%;background:var(--bg)}
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:18px 5vw;mix-blend-mode:difference}
+.lp-nav .logo-txt{font-family:var(--serif);font-size:20px;font-weight:500;letter-spacing:-.01em;color:#fff}
+.lp-nav .logo-txt b{color:var(--green);font-weight:500}
+.lp-nav-links{display:flex;gap:28px;align-items:center}
+.lp-nav-links a{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:#fff;text-decoration:none;cursor:pointer;opacity:.85;transition:opacity .2s}
+.lp-nav-links a:hover{opacity:1}
+.lp-cta-sm{border:1px solid rgba(255,255,255,.4);border-radius:30px;padding:7px 16px !important;opacity:1 !important}
+/* canvas backdrop */
+#lp-canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+.lp-section{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;justify-content:center;padding:0 5vw}
+.lp-hero{min-height:100vh;justify-content:center}
+.lp-eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--green);margin-bottom:24px;opacity:0}
+.lp-h1{font-family:var(--serif);font-weight:300;font-size:clamp(38px,7vw,92px);line-height:1.02;letter-spacing:-.02em;color:var(--text);max-width:16ch;margin-bottom:28px}
+.lp-h1 em{font-style:italic;color:var(--green)}
+.lp-h1 .word{display:inline-block;opacity:0;transform:translateY(40px)}
+.lp-lead{font-size:clamp(15px,1.6vw,19px);line-height:1.6;color:var(--text2);max-width:54ch;margin-bottom:40px;opacity:0;transform:translateY(20px)}
+.lp-hero-cta{display:flex;gap:14px;flex-wrap:wrap;opacity:0;transform:translateY(20px)}
+.lp-btn{font-family:var(--mono);font-size:13px;letter-spacing:.02em;border-radius:40px;padding:15px 30px;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text);transition:all .25s;display:inline-flex;align-items:center;gap:9px;text-decoration:none}
+.lp-btn.primary{background:var(--green);color:#07120a;border-color:var(--green);font-weight:500}
+.lp-btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 40px -10px var(--green)}
+.lp-btn:not(.primary):hover{border-color:var(--green);color:var(--green);background:var(--gdim)}
+.lp-scroll-hint{position:absolute;bottom:34px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);display:flex;flex-direction:column;align-items:center;gap:10px;opacity:0}
+.lp-scroll-hint .line{width:1px;height:40px;background:linear-gradient(var(--green),transparent);animation:scrollpulse 2s ease-in-out infinite}
+@keyframes scrollpulse{0%,100%{opacity:.3;transform:scaleY(.6)}50%{opacity:1;transform:scaleY(1)}}
+/* stat band */
+.lp-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:30px;padding:90px 5vw;border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative;z-index:2;background:var(--bg2)}
+.lp-stat .num{font-family:var(--serif);font-size:clamp(30px,4vw,52px);font-weight:400;color:var(--green);line-height:1}
+.lp-stat .lbl{font-family:var(--mono);font-size:11px;color:var(--text2);margin-top:10px;line-height:1.5}
+/* pinned value-chain set-piece */
+.lp-chain{position:relative;z-index:2;background:var(--bg)}
+.lp-chain-pin{height:100vh;display:flex;flex-direction:column;justify-content:center;padding:0 5vw;overflow:hidden}
+.lp-chain-head{margin-bottom:50px}
+.lp-chain-head .k{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green);margin-bottom:14px}
+.lp-chain-head h2{font-family:var(--serif);font-weight:300;font-size:clamp(28px,4vw,52px);line-height:1.08;color:var(--text);max-width:18ch}
+.lp-chain-track{display:flex;gap:24px}
+.lp-stage{flex:0 0 auto;width:min(78vw,420px);border:1px solid var(--border);border-radius:16px;padding:30px;background:linear-gradient(160deg,var(--surface),var(--bg2));position:relative}
+.lp-stage .st-n{font-family:var(--mono);font-size:11px;color:var(--text3);letter-spacing:.1em}
+.lp-stage .st-t{font-family:var(--serif);font-size:26px;font-weight:400;color:var(--text);margin:10px 0 6px}
+.lp-stage .st-d{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:18px}
+.lp-stage .st-tools{display:flex;flex-wrap:wrap;gap:8px}
+.lp-stage .st-tool{font-family:var(--mono);font-size:11px;color:var(--green);background:var(--gdim);border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer;transition:all .2s}
+.lp-stage .st-tool:hover{background:var(--glow);border-color:var(--green)}
+/* feature reveals */
+.lp-feature{min-height:90vh;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;padding:120px 5vw;position:relative;z-index:2}
+.lp-feature.reverse{direction:rtl}.lp-feature.reverse>*{direction:ltr}
+.lp-feature .ft-k{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--green);margin-bottom:18px}
+.lp-feature .ft-t{font-family:var(--serif);font-weight:300;font-size:clamp(26px,3.4vw,46px);line-height:1.1;color:var(--text);margin-bottom:20px}
+.lp-feature .ft-t em{font-style:italic;color:var(--green)}
+.lp-feature .ft-d{font-size:15px;line-height:1.7;color:var(--text2);margin-bottom:26px;max-width:48ch}
+.lp-reveal{opacity:0;transform:translateY(40px)}
+.ft-visual{aspect-ratio:1/1;border-radius:20px;border:1px solid var(--border);background:radial-gradient(circle at 50% 40%,var(--surface),var(--bg));display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.ft-visual svg{width:88%;height:88%}
+/* dossier spotlight */
+.lp-spotlight{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 5vw;position:relative;z-index:2;background:radial-gradient(ellipse at 50% 50%,rgba(74,180,100,.07),transparent 70%)}
+.lp-spotlight .sp-pill{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);border:1px solid var(--border2);border-radius:30px;padding:7px 18px;margin-bottom:26px;background:var(--gdim);opacity:0;transform:translateY(20px)}
+.lp-spotlight h2{font-family:var(--serif);font-weight:300;font-size:clamp(32px,5vw,68px);line-height:1.05;color:var(--text);max-width:18ch;margin-bottom:24px}
+.lp-spotlight h2 em{font-style:italic;color:var(--green)}
+.lp-spotlight p{font-size:clamp(15px,1.6vw,18px);line-height:1.65;color:var(--text2);max-width:56ch;margin-bottom:38px}
+/* footer cta */
+.lp-foot{padding:120px 5vw 80px;text-align:center;position:relative;z-index:2;border-top:1px solid var(--border)}
+.lp-foot h2{font-family:var(--serif);font-weight:300;font-size:clamp(30px,4.5vw,60px);color:var(--text);margin-bottom:30px;line-height:1.06}
+.lp-foot .foot-meta{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:60px;line-height:1.8}
+/* in-app: back-to-home affordance */
+.home-link{cursor:pointer}
+@media(max-width:860px){
+  .lp-feature{grid-template-columns:1fr;gap:30px;min-height:auto;padding:80px 6vw}
+  .lp-feature.reverse{direction:ltr}
+  .lp-stats{grid-template-columns:repeat(2,1fr);gap:24px;padding:60px 6vw}
+  .lp-nav-links a:not(.lp-cta-sm){display:none}
+  .ft-visual{max-width:380px;justify-self:center}
+}
 </style>
 </head>
 <body>
+<div id="veil"></div>
+<canvas id="lp-canvas"></canvas>
+<div id="landing-view"></div>
+<div id="app-view">
 <header class="hdr">
-  <div class="logo"><div class="logo-dot"></div><span class="logo-txt">Drug<b>IQ</b></span></div>
+  <div class="logo home-link" onclick="backToHome()" title="Back to home"><div class="logo-dot"></div><span class="logo-txt">Drug<b>IQ</b></span></div>
   <div class="divv"></div>
   <div class="ctx-bar">
     <div class="ctx-wrap">
@@ -248,7 +394,11 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
 <div class="main">
   <nav class="sidebar">
     <div class="ss">
-      <p class="ss-lbl">Tools</p>
+      <p class="ss-lbl">Candidate Analysis</p>
+      <button class="tbtn hero" id="b-dossier" onclick="go('dossier')"><span class="tnum">◆</span><span class="tname">Candidate Dossier</span><span class="hero-tag">New</span></button>
+    </div>
+    <div class="ss" style="padding-top:0">
+      <p class="ss-lbl">Explorer Toolkit</p>
       <button class="tbtn on"  onclick="go('welcome')"><span class="tnum">⌂</span><span class="tname">Overview</span></button>
       <button class="tbtn" id="b-scisynth"     onclick="go('scisynth')"><span class="tnum">①</span><span class="tname">SciSynth</span><span class="tdot"></span></button>
       <button class="tbtn" id="b-targetscope"  onclick="go('targetscope')"><span class="tnum">②</span><span class="tname">TargetScope</span><span class="tdot"></span></button>
@@ -280,6 +430,7 @@ select.fin{cursor:pointer;appearance:none;background-image:url("data:image/svg+x
   </nav>
   <main class="content" id="content"></main>
 </div>
+</div><!-- /#app-view -->
 <script>
 // ── TOOLS ────────────────────────────────────────────────────────────────────
 const T = {
@@ -404,16 +555,22 @@ function go(id, skipHash) {
   const b = id==='welcome' ? document.querySelector('.tbtn[onclick*="welcome"]') : document.getElementById('b-'+id);
   if(b) b.classList.add('on');
   ['target','hit','lead','clinical'].forEach(c=>{
-    document.getElementById('cd-'+c).classList.toggle('on', CHAIN_MAP[id]===c);
-    document.getElementById('cl-'+c).classList.toggle('on', CHAIN_MAP[id]===c);
+    const cm = id==='dossier' ? null : CHAIN_MAP[id];
+    document.getElementById('cd-'+c).classList.toggle('on', cm===c);
+    document.getElementById('cl-'+c).classList.toggle('on', cm===c);
   });
   const sb = document.getElementById('stageBadge');
   if(id==='welcome'){ sb.style.display='none'; }
+  else if(id==='dossier'){ sb.style.display='inline-block'; sb.textContent='CANDIDATE ANALYSIS'; }
   else { sb.style.display='inline-block'; sb.textContent=T[id].stage; }
-  document.getElementById('content').innerHTML = id==='welcome' ? welcomeHTML() : toolHTML(id);
-  if(id !== 'welcome') gtag('event', 'tool_view', {tool_id: id, tool_name: T[id].name});
-  if(!skipHash) location.hash = id==='welcome' ? '' : id;
-  document.getElementById('content').scrollTop = 0;
+  const content=document.getElementById('content');
+  // quick cross-fade for a "page" feel between tools
+  content.style.transition='none'; content.style.opacity='0'; content.style.transform='translateY(8px)';
+  content.innerHTML = id==='welcome' ? welcomeHTML() : id==='dossier' ? dossierHTML() : toolHTML(id);
+  requestAnimationFrame(()=>{ content.style.transition='opacity .35s ease, transform .35s ease'; content.style.opacity='1'; content.style.transform='translateY(0)'; });
+  if(id !== 'welcome') gtag('event', 'tool_view', {tool_id: id, tool_name: id==='dossier'?'Candidate Dossier':T[id].name});
+  if(!skipHash) location.hash = (id==='welcome') ? 'welcome' : id;
+  content.scrollTop = 0;
   window.scrollTo(0,0);
 }
 
@@ -448,13 +605,17 @@ function welcomeHTML() {
   }).join('');
   return `<div class="welcome">
     <div class="welcome-left">
+      <div class="dh-hero" style="margin-bottom:1.5rem;cursor:pointer" onclick="go('dossier')">
+        <span class="dh-pill">◆ Flagship · New</span>
+        <h1 class="dh-title" style="font-size:22px">Candidate Risk Dossier</h1>
+        <p class="dh-sub" style="font-size:12.5px">Paste one target + compound + indication. Get one cited verdict — target validation, chemical liabilities, prior-failure precedent, and the competitive trial landscape — fused into a single External Evidence Score. <span style="color:var(--green)">Open the Dossier →</span></p>
+      </div>
       <h1 class="wtitle">Research drug development.<br><em>Faster.</em></h1>
       <p class="wsub">Eleven AI-powered tools covering the full drug development value chain — from literature synthesis to antimicrobial resistance. Free, no login required.</p>
       <p style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:1.5rem">New to life sciences? Toggle <span style="color:var(--amber);cursor:pointer" onclick="toggleGuide()">Guide Mode</span> in the sidebar for plain-English explanations on every tool.</p>
       <div class="tgrid">${cHTML}</div>
-      <button class="sbtn" onclick="go('scisynth')">Start with SciSynth →</button>
-      <button class="sbtn alt" onclick="go('molprofile')" style="margin-top:8px">Try MolProfile ⑧ →</button>
-      <button class="sbtn alt2" onclick="go('alphamissense')" style="margin-top:8px">Try AlphaMissense ⑦ →</button>
+      <button class="sbtn" onclick="go('dossier')">◆ Generate a Candidate Dossier →</button>
+      <button class="sbtn alt" onclick="go('scisynth')" style="margin-top:8px">Start with SciSynth →</button>
       <button class="sbtn alt2" onclick="go('pathogenrx')" style="margin-top:8px;border-color:#00C896;color:#00C896">Try PathogenRx ⑪ →</button>
     </div>
     <div class="welcome-right">
@@ -1130,7 +1291,7 @@ function exportJSON(id) {
   if (!data) return;
   const payload = {
     tool: id,
-    tool_name: T[id]?.name || id,
+    tool_name: id==='dossier' ? 'Candidate Risk Dossier' : (T[id]?.name || id),
     generated_at: new Date().toISOString(),
     generated_by: 'DrugIQ — drugiq.vercel.app',
     input_parameters: params,
@@ -1180,7 +1341,7 @@ function exportPrint(id) {
       a{color:#2a7}
       @media print{.meta{border-bottom:2px solid #000}.badge{border:1px solid #999}}
     </style></head><body>
-    <h1>${t?.name || 'DrugIQ'} — ${t?.sub || 'Result'}</h1>
+    <h1>${id==='dossier' ? 'Candidate Risk Dossier' : (t?.name || 'DrugIQ')} — ${id==='dossier' ? 'External Evidence Report' : (t?.sub || 'Result')}</h1>
     <div class="meta">
       Generated: ${new Date().toLocaleString()}<br>
       Source: <a href="https://drugiq.vercel.app">drugiq.vercel.app</a><br>
@@ -1196,8 +1357,9 @@ function exportCopy(id) {
   const { data, params, sources } = lastResult;
   if (!data) return;
   const t = T[id];
+  const friendly = id==='dossier' ? 'Candidate Risk Dossier' : (t?.name || id);
   const lines = [
-    `# DrugIQ — ${t?.name || id}`,
+    `# DrugIQ — ${friendly}`,
     `Generated: ${new Date().toISOString()}`,
     `Source: https://drugiq.vercel.app`,
     '',
@@ -1216,6 +1378,358 @@ function exportCopy(id) {
     btn.textContent = '✓ Copied';
     setTimeout(() => { btn.textContent = original; }, 1500);
   });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CANDIDATE DOSSIER — Layers 1 (Ingest) · 2 (Orchestration) · 3 (Dossier)
+// Wires existing tool run()s + buildSources() into one external-validation product.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── LAYER 1: INGEST ───────────────────────────────────────────────────────────
+function dossierHTML() {
+  const gd = (document.getElementById('gDisease')||{}).value || '';
+  const ex = [
+    {lbl:'KRAS G12C · Sotorasib · NSCLC', target:'KRAS', compound:'Sotorasib', indication:'Non-small cell lung cancer'},
+    {lbl:'EGFR · Osimertinib · NSCLC', target:'EGFR', compound:'Osimertinib', indication:'Non-small cell lung cancer'},
+    {lbl:'BRAF · Vemurafenib · Melanoma', target:'BRAF', compound:'Vemurafenib', indication:'Melanoma'},
+    {lbl:'BCL2 · Venetoclax · CLL', target:'BCL2', compound:'Venetoclax', indication:'Chronic lymphocytic leukemia'}
+  ];
+  const chips = ex.map((e,i)=>`<span class="chip" onclick="applyDossierEx(${i})">${e.lbl}</span>`).join('');
+  window._dossierEx = ex;
+  return `<div class="dh-hero">
+    <span class="dh-pill">◆ Flagship · Candidate Risk Dossier</span>
+    <h1 class="dh-title">One candidate in. <em>One cited verdict out.</em></h1>
+    <p class="dh-sub">Your model tells you which molecules to make. DrugIQ tells you — in seconds, with a citation for every claim — what the public scientific record already knows about each one, so you can kill the doomed candidates before the wet lab does it at 100× the cost. Enter a target, a compound, and an indication; we fan out across genetic validation, chemical liabilities, prior-failure precedent, and the competitive trial landscape, then fuse it into a single External Evidence Score.</p>
+  </div>
+  <div class="fcard">
+    <div class="frow">
+      <div class="fg"><label class="flbl">Target (gene / protein) *</label><input class="fin" id="f-d-target" type="text" placeholder="e.g. KRAS, EGFR, BCL2"></div>
+      <div class="fg"><label class="flbl">Compound (name or SMILES) *</label><input class="fin" id="f-d-compound" type="text" placeholder="e.g. Sotorasib  ·  or a SMILES string"></div>
+      <div class="fg"><label class="flbl">Indication (disease) *</label><input class="fin" id="f-d-indication" type="text" placeholder="e.g. Non-small cell lung cancer" value="${gd.replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="chips"><span style="font-family:var(--mono);font-size:10px;color:var(--text3);padding-top:4px">Try:</span>${chips}</div>
+    <div style="margin-top:1rem"><button class="runbtn" id="runbtn" onclick="runDossier()"><svg width="12" height="12" viewBox="0 0 12 12"><polygon points="2,1 11,6 2,11" fill="#0a0e0b"/></svg>Generate Dossier</button></div>
+  </div>
+  <div id="out"></div>`;
+}
+
+function applyDossierEx(i){
+  const e = (window._dossierEx||[])[i]; if(!e) return;
+  const t=document.getElementById('f-d-target'), c=document.getElementById('f-d-compound'), d=document.getElementById('f-d-indication');
+  if(t) t.value=e.target; if(c) c.value=e.compound; if(d) d.value=e.indication;
+}
+
+// Detect SMILES vs plain name (best-effort; SMILES tends to contain these tokens)
+function looksLikeSMILES(s){
+  if(!s) return false;
+  return /[=#\[\]()@]/.test(s) && /[A-Za-z]/.test(s) && !/\s/.test(s);
+}
+
+// ── LAYER 2: ORCHESTRATION ──────────────────────────────────────────────────
+// Fan out across existing tool run()s in parallel. Each probe is isolated so one
+// failure never kills the dossier — it just marks that probe degraded.
+const DOSSIER_PROBES = [
+  {key:'target',    tool:'targetscope',  label:'Target validation',   build:(c)=>({disease:c.indication})},
+  {key:'variant',   tool:'alphamissense',label:'Variant risk',        build:(c)=>({gene:c.target, variant:'', disease_context:c.indication}), skipIf:(c)=>true},
+  {key:'binding',   tool:'bindpredict',  label:'Target–compound binding', build:(c)=>({target:c.target, compound:c.compoundName, disease:c.indication})},
+  {key:'chem',      tool:'molprofile',   label:'Chemical liabilities', build:(c)=>({compound:c.compoundName, target_context:c.target+' for '+c.indication})},
+  {key:'priorart',  tool:'repurposerx',  label:'Prior-failure precedent', build:(c)=>({disease:c.indication})},
+  {key:'trials',    tool:'trialmatch',   label:'Competitive trial landscape', build:(c)=>({disease:c.indication})}
+];
+
+async function orchestrate(candidate){
+  // Note: alphamissense needs a specific variant; without one we skip it gracefully.
+  const active = DOSSIER_PROBES.filter(pr => !(pr.skipIf && pr.skipIf(candidate)));
+  const settled = await Promise.allSettled(active.map(async pr => {
+    const params = pr.build(candidate);
+    const data = await callTool(pr.tool, params);
+    return { key: pr.key, tool: pr.tool, label: pr.label, data };
+  }));
+  const probes = {};
+  active.forEach((pr, i) => {
+    const r = settled[i];
+    if (r.status === 'fulfilled') {
+      probes[pr.key] = { ok:true, tool:pr.tool, label:pr.label, data:r.value.data };
+    } else {
+      probes[pr.key] = { ok:false, tool:pr.tool, label:pr.label, error:(r.reason&&r.reason.message)||'unreachable' };
+    }
+  });
+  return probes;
+}
+
+async function runDossier(){
+  const btn=document.getElementById('runbtn'), out=document.getElementById('out');
+  const target=(document.getElementById('f-d-target')||{}).value?.trim()||'';
+  const compound=(document.getElementById('f-d-compound')||{}).value?.trim()||'';
+  const indication=(document.getElementById('f-d-indication')||{}).value?.trim()||'';
+  if(!target||!compound||!indication){ out.innerHTML=eHTML('Please fill in target, compound, and indication.',true); return; }
+  document.getElementById('gDisease').value=indication;
+  const isSmiles=looksLikeSMILES(compound);
+  const candidate={ target, compound, compoundName: isSmiles?compound:compound, indication, isSmiles };
+  btn.disabled=true;
+  out.innerHTML=dossierLoadHTML();
+  gtag('event','dossier_run',{target,indication});
+  try{
+    const [probes] = await Promise.all([orchestrate(candidate), dossierAnim()]);
+    out.innerHTML=renderDossier(candidate, probes);
+    gtag('event','dossier_result',{success:true});
+  }catch(e){
+    out.innerHTML=eHTML(e.message||'Dossier generation failed');
+    gtag('event','dossier_result',{success:false,error:e.message});
+  }
+  btn.disabled=false;
+}
+
+const DOSSIER_STEPS=['Resolving target genetic validation','Profiling compound chemical liabilities','Scanning prior-failure & precedent','Mapping competitive trial landscape','Fusing evidence & scoring'];
+function dossierLoadHTML(){
+  return `<div class="lcard"><div class="spinner"></div><p style="font-family:var(--mono);font-size:12px;color:var(--text3)">Running ${DOSSIER_PROBES.filter(p=>!(p.skipIf&&p.skipIf({}))).length} parallel evidence probes…</p><div class="lsteps">${DOSSIER_STEPS.map((s,i)=>`<div class="lstep" id="ls-${i}"><div class="sdot ${i===0?'active':''}"></div><span>${s}</span></div>`).join('')}</div></div>`;
+}
+async function dossierAnim(){
+  for(let i=0;i<DOSSIER_STEPS.length-1;i++){
+    await new Promise(r=>setTimeout(r,650+Math.random()*500));
+    const c=document.getElementById('ls-'+i), n=document.getElementById('ls-'+(i+1));
+    if(!c) break;
+    c.querySelector('.sdot').className='sdot done'; c.classList.add('done');
+    if(n){n.querySelector('.sdot').className='sdot active';n.classList.add('active');}
+  }
+}
+
+// ── LAYER 3: THE DOSSIER ──────────────────────────────────────────────────────
+// Helpers to read verdict/confidence/findings out of any tool's synthesis shape.
+function _syn(d){ return (d&&(d.synthesis||d))||{}; }
+function _conf(d){ const s=_syn(d); return s.confidence||(d&&d.confidence)||'Medium'; }
+function _summary(d){ const s=_syn(d); return s.summary||(d&&d.summary)||''; }
+function _findings(d){ const s=_syn(d); return s.keyFindings||s.key_findings||(d&&d.keyFindings)||[]; }
+function _verdict(d){ const s=_syn(d); return (s.verdict||(d&&d.verdict)||'').toString(); }
+
+// Each section returns {flag:'ok'|'warn'|'bad'|'na', score:0-100|null, lines:[{k,v,refs:[idx]}], note}
+function secTarget(probe, refMap){
+  if(!probe||!probe.ok) return {flag:'na',score:null,lines:[],note:'Target-validation probe unavailable (service degraded). Re-run to retry.'};
+  const d=probe.data;
+  const targets=(d.top_targets||d._ot_targets||[]);
+  const hit=targets.find(t=>(t.symbol||t.approvedSymbol||'').toUpperCase()===window._curCandidate.target.toUpperCase());
+  const lines=[];
+  let score=50, flag='warn';
+  if(hit){
+    const ga=hit.genetic_association ?? hit.score ?? hit.overall_score;
+    lines.push({k:'GENETIC', v:`<strong>${window._curCandidate.target}</strong> appears in OpenTargets associations for ${window._curCandidate.indication}${ga?` (association score ${(typeof ga==='number'?ga.toFixed(2):ga)})`:''}.`, refs:refMap.targetscope||[]});
+    score=78; flag='ok';
+  } else if(targets.length){
+    lines.push({k:'GENETIC', v:`<strong>${window._curCandidate.target}</strong> was <em>not</em> among the top genetically-associated targets returned for ${window._curCandidate.indication}. The top names were ${targets.slice(0,3).map(t=>t.symbol||t.approvedSymbol).filter(Boolean).join(', ')||'—'}. This is a validation gap worth confirming.`, refs:refMap.targetscope||[]});
+    score=42; flag='warn';
+  } else {
+    lines.push({k:'GENETIC', v:`No structured target list returned; rely on the literature synthesis below.`, refs:refMap.targetscope||[]});
+  }
+  const sm=_summary(d); if(sm) lines.push({k:'AI', v:sm.slice(0,420), refs:refMap.targetscope||[]});
+  _findings(d).slice(0,2).forEach((f,i)=>lines.push({k:'EVID '+(i+1), v:f, refs:refMap.targetscope||[]}));
+  return {flag,score,lines,note:''};
+}
+
+function secChem(probe, refMap){
+  if(!probe||!probe.ok) return {flag:'na',score:null,lines:[],note:'Chemical-liability probe unavailable (compound not resolved or service degraded).'};
+  const d=probe.data;
+  const lines=[]; let score=60, flag='warn';
+  const lip=d.lipinski||{passes:true,violations:[]};
+  const veber=d.veber||{passes:true};
+  if(lip.passes && veber.passes){ score=82; flag='ok'; }
+  else if(!lip.passes && lip.violations && lip.violations.length>=2){ score=38; flag='bad'; }
+  else { score=58; flag='warn'; }
+  lines.push({k:'LIPINSKI', v: lip.passes? 'Passes Lipinski Rule of Five — drug-like physicochemistry.' : `Lipinski violations: ${(lip.violations||[]).join(', ')}. Oral bioavailability risk.`, refs:refMap.molprofile||[]});
+  lines.push({k:'PROPS', v:`MW ${(+d.mw||0).toFixed(0)} · LogP ${(+d.logp||0).toFixed(2)} · TPSA ${(+d.tpsa||0).toFixed(0)} · HBD ${d.hbd||0} · HBA ${d.hba||0} · RotB ${d.rotb||0}. Veber oral ${veber.passes?'pass':'fail'}; BBB ${d.bbb_likely?'penetration plausible':'penetration unlikely'}.`, refs:refMap.molprofile||[]});
+  if(d.chembl&&d.chembl.max_phase!=='' && d.chembl.max_phase!=null){
+    lines.push({k:'CHEMBL', v:`Highest known development phase for this compound: <strong>Phase ${d.chembl.max_phase}</strong>${d.chembl.indication?` (${d.chembl.indication})`:''}. ${(+d.chembl.max_phase>=4)?'Already approved somewhere — strong de-risking signal.':'Not yet approved.'}`, refs:refMap.molprofile||[]});
+  }
+  const sm=_summary(d); if(sm) lines.push({k:'AI', v:sm.slice(0,360), refs:refMap.molprofile||[]});
+  return {flag,score,lines,note:''};
+}
+
+function secPrecedent(probe, refMap){
+  if(!probe||!probe.ok) return {flag:'na',score:null,lines:[],note:'Precedent probe unavailable (service degraded).'};
+  const d=probe.data;
+  const lines=[]; let score=55, flag='warn';
+  const cands=(d.repurposing_candidates||[]);
+  if(cands.length){
+    const top=cands.slice(0,3).map(c=>c.drug_name||c.name).filter(Boolean);
+    lines.push({k:'PRIOR ART', v:`Public mechanism/repurposing evidence for ${window._curCandidate.indication} surfaces ${cands.length} prior agent(s)${top.length?`, incl. ${top.join(', ')}`:''}. Cross-check whether your candidate's mechanism overlaps — overlap means precedent (de-risking) or a crowded field (commercial risk).`, refs:refMap.repurposerx||[]});
+    score=64; flag='ok';
+  } else {
+    lines.push({k:'PRIOR ART', v:`No strong prior-agent precedent returned for ${window._curCandidate.indication}. Could mean genuine novelty (upside) or thin evidence (risk).`, refs:refMap.repurposerx||[]});
+    score=50; flag='warn';
+  }
+  const sm=_summary(d); if(sm) lines.push({k:'AI', v:sm.slice(0,360), refs:refMap.repurposerx||[]});
+  _findings(d).slice(0,2).forEach((f,i)=>lines.push({k:'NOTE '+(i+1), v:f, refs:refMap.repurposerx||[]}));
+  return {flag,score,lines,note:''};
+}
+
+function secTrials(probe, refMap){
+  if(!probe||!probe.ok) return {flag:'na',score:null,lines:[],note:'Trial-landscape probe unavailable (service degraded).'};
+  const d=probe.data;
+  const lines=[]; let score=55, flag='warn';
+  if(d._noTrials){
+    lines.push({k:'LANDSCAPE', v:`No active/recruiting trials found for ${window._curCandidate.indication}. White space — or an indication few are pursuing. Confirm before reading as opportunity.`, refs:refMap.trialmatch||[]});
+    score=50; flag='warn';
+  } else {
+    const n=d._totalFound||(d.matches||[]).length;
+    lines.push({k:'LANDSCAPE', v:`<strong>${n}</strong> active trial(s) intersect ${window._curCandidate.indication}. A dense field validates the indication but signals competition; a sparse field is differentiated but less de-risked.`, refs:refMap.trialmatch||[]});
+    const tops=(d.matches||[]).slice(0,3).map(m=>`${m.trial?.nct_id||'NCT?'} (${m.trial?.phase||'phase N/A'})`);
+    if(tops.length) lines.push({k:'EXAMPLES', v:`Representative trials: ${tops.join(' · ')}.`, refs:refMap.trialmatch||[]});
+    score = n>=8?70 : n>=3?62 : 54;
+    flag = n>=3?'ok':'warn';
+    const ai=d._aiSummary&&(d._aiSummary.summary); if(ai) lines.push({k:'AI', v:ai.slice(0,340), refs:refMap.trialmatch||[]});
+  }
+  return {flag,score,lines,note:''};
+}
+
+function dossierVerdict(score){
+  if(score>=75) return {label:'Low External Risk', color:'var(--green)', flag:'ok', desc:'The public record broadly supports this candidate across target validation, chemistry, precedent, and landscape. Proceed — with normal diligence.'};
+  if(score>=55) return {label:'Moderate External Risk', color:'var(--amber)', flag:'warn', desc:'Mixed external signal. At least one dimension carries a validation gap or liability. Resolve the flagged items before committing wet-lab spend.'};
+  if(score>=1)  return {label:'Elevated External Risk', color:'var(--red)', flag:'bad', desc:'The public record raises material concerns on one or more axes. Strongly recommend resolving flags or reconsidering before synthesis.'};
+  return {label:'Inconclusive', color:'var(--text3)', flag:'na', desc:'Too many evidence probes were unavailable to score confidently. Re-run to retry the degraded services.'};
+}
+
+function renderDossier(candidate, probes){
+  window._curCandidate = candidate;
+
+  // Build a unified, de-duplicated citation list across all probes, and a map
+  // from tool -> [citation indices] so each line can cite its real sources.
+  const allSources=[]; const refMap={}; let idx=1;
+  Object.values(probes).forEach(pr=>{
+    if(!pr.ok) return;
+    let srcs=[];
+    try{ srcs=buildSources(pr.tool, pr.data)||[]; }catch(_){ srcs=[]; }
+    const ids=[];
+    srcs.forEach(s=>{
+      const item={ id:idx, tag:s.tag, label:s.label, detail:s.detail, url:s.url };
+      allSources.push(item); ids.push(idx); idx++;
+    });
+    refMap[pr.tool]=ids;
+  });
+
+  const sTarget=secTarget(probes.target, refMap);
+  const sChem=secChem(probes.chem, refMap);
+  const sPrec=secPrecedent(probes.priorart, refMap);
+  const sTrials=secTrials(probes.trials, refMap);
+
+  // External Evidence Score = weighted mean of available section scores.
+  const weights={target:0.32, chem:0.30, prec:0.18, trials:0.20};
+  const parts=[[sTarget.score,weights.target],[sChem.score,weights.chem],[sPrec.score,weights.prec],[sTrials.score,weights.trials]]
+    .filter(([s])=>s!=null);
+  const wsum=parts.reduce((a,[,w])=>a+w,0);
+  const score = parts.length ? Math.round(parts.reduce((a,[s,w])=>a+s*w,0)/wsum) : 0;
+  const verdict=dossierVerdict(parts.length?score:0);
+
+  // Persist for export (reuse existing export plumbing with a synthetic id).
+  lastResult = {
+    id:'dossier',
+    data:{ candidate, external_evidence_score:score, verdict:verdict.label,
+      sections:{ target_validation:sTarget, chemical_liabilities:sChem, precedent:sPrec, trial_landscape:sTrials },
+      probe_status:Object.fromEntries(Object.entries(probes).map(([k,v])=>[k,v.ok?'ok':'degraded:'+(v.error||'')])) },
+    params:{ target:candidate.target, compound:candidate.compound, indication:candidate.indication },
+    sources:allSources
+  };
+
+  const ringR=46, circ=2*Math.PI*ringR;
+  const pct = parts.length?score:0;
+  const dash = circ*(pct/100);
+  const okCount=Object.values(probes).filter(p=>p.ok).length;
+  const totalCount=Object.values(probes).length;
+
+  const sectionHTML = [
+    ['🎯','Target Validation Evidence', sTarget],
+    ['⚗️','Chemical Liability Flags', sChem],
+    ['📚','Precedent & Prior-Failure Analysis', sPrec],
+    ['🧪','Competitive Trial Landscape', sTrials]
+  ].map(([ico,title,sec])=>{
+    const flagTxt = sec.flag==='ok'?'Supported':sec.flag==='warn'?'Caution':sec.flag==='bad'?'Concern':'No data';
+    const bg = sec.flag==='ok'?'rgba(74,180,100,.12)':sec.flag==='warn'?'rgba(212,168,67,.12)':sec.flag==='bad'?'rgba(196,92,92,.14)':'var(--bg3)';
+    const linesHTML = sec.lines.length ? sec.lines.map(l=>{
+      const refs=(l.refs||[]).map(r=>`<a class="cite-ref" href="#dsrc-${r}" onclick="event.preventDefault();var el=document.getElementById('dsrc-${r}');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='var(--glow)';setTimeout(()=>el.style.background='',1200);}">[${r}]</a>`).join('');
+      return `<div class="dfind"><span class="df-k">${l.k}</span><span class="df-v">${l.v}${refs}</span></div>`;
+    }).join('') : `<div class="dsec-body" style="color:var(--text3)">${sec.note||'No data returned for this section.'}</div>`;
+    const scoreChip = sec.score!=null?`<span style="font-family:var(--mono);font-size:10px;color:${cc(sec.score)}">${sec.score}/100</span>`:'';
+    return `<div class="dsec">
+      <div class="dsec-hdr">
+        <div class="dsec-ico" style="background:${bg}">${ico}</div>
+        <span class="dsec-t">${title}</span>
+        ${scoreChip}
+        <span class="dsec-flag flag-${sec.flag}">${flagTxt}</span>
+      </div>
+      ${linesHTML}
+    </div>`;
+  }).join('');
+
+  const probeStrip = Object.values(probes).map(pr=>{
+    const col=pr.ok?'var(--green)':'var(--red)';
+    return `<div class="dprobe"><i style="background:${col}"></i>${pr.label} — ${pr.ok?'ok':'degraded'}</div>`;
+  }).join('');
+
+  return `<div class="dossier-card">
+    <div class="dossier-top">
+      <div class="dt-row">
+        <span class="dt-id">CANDIDATE RISK DOSSIER</span>
+        <span class="dsec-flag flag-${verdict.flag}">${verdict.label}</span>
+      </div>
+      <div class="dt-name">${candidate.target} · ${candidate.compound.length>32?candidate.compound.slice(0,32)+'…':candidate.compound}</div>
+      <div class="dt-meta">
+        <span class="mi">Target: <span>${candidate.target}</span></span>
+        <span class="mi">Compound: <span>${candidate.isSmiles?'SMILES':candidate.compound}</span></span>
+        <span class="mi">Indication: <span>${candidate.indication}</span></span>
+        <span class="mi">Probes: <span>${okCount}/${totalCount} live</span></span>
+      </div>
+    </div>
+
+    <div class="score-wrap">
+      <div class="score-ring">
+        <svg width="104" height="104" viewBox="0 0 104 104">
+          <circle cx="52" cy="52" r="${ringR}" fill="none" stroke="var(--bg3)" stroke-width="9"/>
+          <circle cx="52" cy="52" r="${ringR}" fill="none" stroke="${verdict.color}" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"/>
+        </svg>
+        <div class="score-num"><b style="color:${verdict.color}">${parts.length?score:'—'}</b><small>EXT EVIDENCE</small></div>
+      </div>
+      <div class="score-verdict">
+        <div class="sv-label" style="color:${verdict.color}">${verdict.label}</div>
+        <div class="sv-desc">${verdict.desc}</div>
+        <div class="score-legend">
+          <span><i style="background:var(--green)"></i>75–100 low risk</span>
+          <span><i style="background:var(--amber)"></i>55–74 moderate</span>
+          <span><i style="background:var(--red)"></i>1–54 elevated</span>
+        </div>
+      </div>
+    </div>
+
+    ${sectionHTML}
+
+    <div class="dsec">
+      <div class="dsec-hdr"><div class="dsec-ico" style="background:var(--bg3)">🛰️</div><span class="dsec-t">Evidence Probe Status</span></div>
+      ${probeStrip}
+    </div>
+
+    <div class="dbanner">
+      <strong>How to read this:</strong> the External Evidence Score is a weighted synthesis of what <em>public</em> sources (OpenTargets, ChEMBL, PubChem, PubMed, ClinicalTrials.gov) report about this target–compound–indication triple. It is an independent second opinion sourced entirely outside any private model — not a prediction of clinical success, and not clinical advice. Every claim is traceable to a cited primary source below. Research use only.
+    </div>
+
+    ${sourcesPanelDossier(allSources)}
+    ${exportBar('dossier')}
+  </div>`;
+}
+
+// Dossier-specific sources panel with anchor ids so in-text [n] refs can jump.
+function sourcesPanelDossier(sources){
+  if(!sources||!sources.length) return `<div class="dsec"><div class="dsec-body" style="color:var(--text3)">No external sources were retrievable for this candidate — likely all probes degraded. Re-run to retry.</div></div>`;
+  const items=sources.map(s=>`
+    <div class="source-item" id="dsrc-${s.id}" style="transition:background .4s">
+      <span class="source-idx">[${s.id}]</span>
+      <div class="source-body">
+        <span class="source-tag">${s.tag}</span>
+        ${s.url?`<a href="${s.url}" target="_blank" rel="noopener">${s.label}</a>`:s.label}
+        ${s.detail?`<div style="color:var(--text3);font-size:10px;margin-top:2px">${s.detail}</div>`:''}
+      </div>
+    </div>`).join('');
+  return `<div class="sources-panel">
+    <div class="sources-hdr"><span>📚 Cited Sources (fused across all probes)</span><span class="sources-count">${sources.length} reference${sources.length>1?'s':''}</span></div>
+    ${items}
+  </div>`;
 }
 
 function render(id,data,p){
@@ -1792,16 +2306,244 @@ function changeViewMode(scope, mode) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// LANDING PAGE ENGINE — cinematic scroll, view router, page transitions
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── LANDING MARKUP ────────────────────────────────────────────────────────────
+function landingHTML(){
+  return `
+  <nav class="lp-nav">
+    <div class="logo-txt">Drug<b>IQ</b></div>
+    <div class="lp-nav-links">
+      <a onclick="lpScrollTo('.lp-chain')">Platform</a>
+      <a onclick="lpScrollTo('.lp-spotlight')">Dossier</a>
+      <a onclick="lpScrollTo('.lp-foot')">About</a>
+      <a class="lp-cta-sm" onclick="enterApp('dossier')">Launch →</a>
+    </div>
+  </nav>
+
+  <section class="lp-section lp-hero">
+    <div class="lp-eyebrow" data-hero="eyebrow">Computational drug discovery · external evidence layer</div>
+    <h1 class="lp-h1" data-hero="title"><span class="word">Know</span> <span class="word">what</span> <span class="word">the</span> <span class="word">world</span> <span class="word">knows</span> <span class="word">—</span> <span class="word"><em>before</em></span> <span class="word"><em>the</em></span> <span class="word"><em>lab</em></span> <span class="word"><em>does.</em></span></h1>
+    <p class="lp-lead" data-hero="lead">DrugIQ unifies eleven AI-powered tools and a flagship Candidate Risk Dossier across the entire drug-development value chain — from literature synthesis to antimicrobial resistance. Every claim cited to a primary source.</p>
+    <div class="lp-hero-cta" data-hero="cta">
+      <a class="lp-btn primary" onclick="enterApp('dossier')">◆ Generate a Dossier</a>
+      <a class="lp-btn" onclick="lpScrollTo('.lp-chain')">Explore the platform</a>
+    </div>
+    <div class="lp-scroll-hint" data-hero="hint"><span>Scroll</span><span class="line"></span></div>
+  </section>
+
+  <section class="lp-stats">
+    ${[['11','AI-powered tools, one platform'],['9+','public data sources, fused & cited'],['200+','AI-discovered drugs now in trials'],['0','approved — selection is the bottleneck']].map(([n,l])=>`<div class="lp-stat lp-reveal"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join('')}
+  </section>
+
+  <section class="lp-chain">
+    <div class="lp-chain-pin">
+      <div class="lp-chain-head">
+        <div class="k">The value chain, end to end</div>
+        <h2>One platform that spans target ID to the clinic.</h2>
+      </div>
+      <div class="lp-chain-track">
+        ${[
+          ['01','Target ID','Find and validate the right biological target.',[['SciSynth','scisynth'],['TargetScope','targetscope'],['AlphaMissense','alphamissense']]],
+          ['02','Hit Discovery','Find molecules that act on the target.',[['BindPredict','bindpredict'],['RepurposeRx','repurposerx'],['CombinedRx','combinedrx'],['PathogenRx','pathogenrx']]],
+          ['03','Lead Optimisation','Profile whether a molecule can become a drug.',[['MolProfile','molprofile'],['BindPredict','bindpredict']]],
+          ['04','Clinical','Match patients, predict response, find trials.',[['BioSignal','biosignal'],['TrialMatch','trialmatch'],['ImmunIQ','immuniq']]]
+        ].map(([n,t,d,tools])=>`<div class="lp-stage"><div class="st-n">STAGE ${n}</div><div class="st-t">${t}</div><div class="st-d">${d}</div><div class="st-tools">${tools.map(([nm,id])=>`<span class="st-tool" onclick="enterApp('${id}')">${nm} →</span>`).join('')}</div></div>`).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-feature">
+    <div class="lp-reveal">
+      <div class="ft-k">Layer 1 · Ingest</div>
+      <div class="ft-t">Your model's output <em>becomes our input.</em></div>
+      <div class="ft-d">Paste a target, a compound (name or SMILES), and an indication. DrugIQ takes the candidate your generative model proposed and treats it as the starting point for an independent, evidence-grounded review.</div>
+      <a class="lp-btn" onclick="enterApp('dossier')">Try the Dossier →</a>
+    </div>
+    <div class="ft-visual lp-reveal">${svgMolecule()}</div>
+  </section>
+
+  <section class="lp-feature reverse">
+    <div class="lp-reveal">
+      <div class="ft-k">Layer 2 · Orchestration</div>
+      <div class="ft-t">Eleven tools, <em>one parallel pipeline.</em></div>
+      <div class="ft-d">A single candidate fans out across genetic validation, chemical liabilities, prior-failure precedent, and the competitive trial landscape — run in parallel, each probe isolated so one failure never sinks the analysis.</div>
+      <a class="lp-btn" onclick="lpScrollTo('.lp-chain')">See the tools →</a>
+    </div>
+    <div class="ft-visual lp-reveal">${svgNetwork()}</div>
+  </section>
+
+  <section class="lp-feature">
+    <div class="lp-reveal">
+      <div class="ft-k">Layer 3 · The Dossier</div>
+      <div class="ft-t">One cited verdict. <em>One External Evidence Score.</em></div>
+      <div class="ft-d">Not eleven scattered result cards — a single synthesized dossier with an External Evidence Score, four evidence sections, and a citation for every claim. The artifact a VP of Discovery forwards to their team.</div>
+      <a class="lp-btn primary" onclick="enterApp('dossier')">◆ Generate a Dossier</a>
+    </div>
+    <div class="ft-visual lp-reveal">${svgGauge()}</div>
+  </section>
+
+  <section class="lp-spotlight">
+    <div class="sp-pill" data-spot="pill">◆ Flagship · Candidate Risk Dossier</div>
+    <h2 data-spot="h2">Kill the doomed candidates <em>before</em> the wet lab does — at 100× the cost.</h2>
+    <p data-spot="p">Generation is solved; selection is not. DrugIQ is the external-validation layer that sits between your generator and your wet lab, telling you in seconds what the public scientific record already knows about every candidate.</p>
+    <a class="lp-btn primary" data-spot="cta" onclick="enterApp('dossier')">Start now — free, no login →</a>
+  </section>
+
+  <section class="lp-foot">
+    <h2 class="lp-reveal">Research drug development.<br><em>Faster.</em></h2>
+    <div class="lp-hero-cta lp-reveal" style="justify-content:center">
+      <a class="lp-btn primary" onclick="enterApp('dossier')">◆ Candidate Dossier</a>
+      <a class="lp-btn" onclick="enterApp('welcome')">Browse all 11 tools</a>
+    </div>
+    <div class="foot-meta">DrugIQ — external evidence &amp; provenance layer for AI drug discovery<br>Public sources: PubMed · OpenTargets · ChEMBL · UniProt · AlphaFold · ClinicalTrials.gov · PubChem<br>For research use only. Not clinical advice.</div>
+  </section>`;
+}
+
+// ── PROCEDURAL SVG VISUALS (no external assets) ───────────────────────────────
+function svgMolecule(){
+  let atoms='',bonds='';const pts=[];const N=7;
+  for(let i=0;i<N;i++){const a=(i/N)*Math.PI*2;const r=120+(i%2?40:0);pts.push([200+Math.cos(a)*r,200+Math.sin(a)*r]);}
+  pts.push([200,200]);
+  for(let i=0;i<N;i++){bonds+=`<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="200" y2="200" stroke="var(--border2)" stroke-width="2"/>`;
+    if(i<N-1)bonds+=`<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[i+1][0]}" y2="${pts[i+1][1]}" stroke="var(--border)" stroke-width="1.5"/>`;}
+  pts.forEach((p,i)=>{const last=i===pts.length-1;atoms+=`<circle cx="${p[0]}" cy="${p[1]}" r="${last?13:8}" fill="${last?'var(--green)':'var(--teal)'}" opacity="${last?1:.85}"><animate attributeName="r" values="${last?13:8};${last?16:11};${last?13:8}" dur="${2+i*0.3}s" repeatCount="indefinite"/></circle>`;});
+  return `<svg viewBox="0 0 400 400"><g style="transform-origin:200px 200px"><animateTransform attributeName="transform" type="rotate" from="0 200 200" to="360 200 200" dur="40s" repeatCount="indefinite"/>${bonds}${atoms}</g></svg>`;
+}
+function svgNetwork(){
+  const nodes=[];for(let i=0;i<14;i++){nodes.push([60+Math.random()*280,60+Math.random()*280]);}
+  let lines='';for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){const d=Math.hypot(nodes[i][0]-nodes[j][0],nodes[i][1]-nodes[j][1]);if(d<130)lines+=`<line x1="${nodes[i][0]}" y1="${nodes[i][1]}" x2="${nodes[j][0]}" y2="${nodes[j][1]}" stroke="var(--border)" stroke-width="1"/>`;}
+  let dots='';nodes.forEach((n,i)=>{dots+=`<circle cx="${n[0]}" cy="${n[1]}" r="${4+Math.random()*4}" fill="${i%3?'var(--teal)':'var(--green)'}"><animate attributeName="opacity" values="0.4;1;0.4" dur="${2+Math.random()*3}s" repeatCount="indefinite"/></circle>`;});
+  return `<svg viewBox="0 0 400 400">${lines}${dots}</svg>`;
+}
+function svgGauge(){
+  const r=130,c=2*Math.PI*r,pct=78,dash=c*pct/100;
+  return `<svg viewBox="0 0 400 400"><circle cx="200" cy="200" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="20"/><circle cx="200" cy="200" r="${r}" fill="none" stroke="var(--green)" stroke-width="20" stroke-linecap="round" stroke-dasharray="0 ${c}" transform="rotate(-90 200 200)"><animate attributeName="stroke-dasharray" values="0 ${c};${dash} ${c}" dur="2s" fill="freeze" begin="0.3s"/></circle><text x="200" y="195" text-anchor="middle" font-family="Fraunces,serif" font-size="62" fill="var(--green)">78</text><text x="200" y="230" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" fill="var(--text3)" letter-spacing="2">EXT EVIDENCE</text></svg>`;
+}
+
+// ── CANVAS BACKDROP (drifting molecular particle field) ───────────────────────
+let lpCanvasRAF=null;
+function startCanvas(){
+  const cv=document.getElementById('lp-canvas');if(!cv)return;
+  const ctx=cv.getContext('2d');let W,H,parts=[];
+  function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  const COUNT=Math.min(70,Math.floor(window.innerWidth/22));
+  for(let i=0;i<COUNT;i++)parts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:1+Math.random()*2});
+  let scrollY=0;window.addEventListener('scroll',()=>{scrollY=window.scrollY;},{passive:true});
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const drift=scrollY*0.15;
+    for(let i=0;i<parts.length;i++){const p=parts[i];p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      const py=(p.y-drift);
+      for(let j=i+1;j<parts.length;j++){const q=parts[j];const dx=p.x-q.x,dy=p.y-q.y;const d=Math.hypot(dx,dy);
+        if(d<130){ctx.strokeStyle='rgba(74,180,100,'+(0.10*(1-d/130))+')';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(p.x,py);ctx.lineTo(q.x,q.y-drift);ctx.stroke();}}
+      ctx.fillStyle='rgba(69,179,162,0.5)';ctx.beginPath();ctx.arc(p.x,py,p.r,0,7);ctx.fill();
+    }
+    lpCanvasRAF=requestAnimationFrame(draw);
+  }
+  draw();
+}
+function stopCanvas(){if(lpCanvasRAF)cancelAnimationFrame(lpCanvasRAF);lpCanvasRAF=null;const cv=document.getElementById('lp-canvas');if(cv){const ctx=cv.getContext('2d');ctx&&ctx.clearRect(0,0,cv.width,cv.height);}}
+
+// ── SCROLL ANIMATIONS (Lenis + GSAP) ──────────────────────────────────────────
+let lenis=null;
+function initLanding(){
+  document.getElementById('landing-view').innerHTML=landingHTML();
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const haveGSAP = window.gsap && window.ScrollTrigger;
+  // Fallback: if no GSAP or reduced motion, make everything visible immediately.
+  function revealAll(){
+    document.querySelectorAll('#landing-view [data-hero],#landing-view [data-spot],#landing-view .lp-reveal,#landing-view .lp-h1 .word')
+      .forEach(el=>{el.style.opacity='1';el.style.transform='none';});
+  }
+  if(reduced || !haveGSAP){ revealAll(); }
+  if(!reduced) startCanvas();
+  // Smooth scroll (only when motion allowed)
+  if(window.Lenis && !reduced){
+    lenis=new Lenis({duration:1.1,easing:t=>Math.min(1,1.001-Math.pow(2,-10*t)),smoothWheel:true});
+    function raf(t){lenis.raf(t);requestAnimationFrame(raf);}requestAnimationFrame(raf);
+    if(haveGSAP){lenis.on('scroll',ScrollTrigger.update);}
+  }
+  if(haveGSAP && !reduced){
+    gsap.registerPlugin(ScrollTrigger);
+    const tl=gsap.timeline({defaults:{ease:'power3.out'}});
+    tl.to('[data-hero="eyebrow"]',{opacity:1,duration:.6,delay:.2})
+      .to('.lp-h1 .word',{opacity:1,y:0,duration:.7,stagger:.06},'-=.2')
+      .to('[data-hero="lead"]',{opacity:1,y:0,duration:.7},'-=.3')
+      .to('[data-hero="cta"]',{opacity:1,y:0,duration:.7},'-=.4')
+      .to('[data-hero="hint"]',{opacity:1,duration:.6},'-=.2');
+    gsap.utils.toArray('.lp-reveal').forEach(el=>{
+      gsap.to(el,{opacity:1,y:0,duration:.9,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 85%'}});
+    });
+    const track=document.querySelector('.lp-chain-track');
+    if(track){
+      const scrollLen=()=>track.scrollWidth-window.innerWidth+window.innerWidth*0.1;
+      gsap.to(track,{x:()=>-scrollLen(),ease:'none',
+        scrollTrigger:{trigger:'.lp-chain',start:'top top',end:()=>'+='+(track.scrollWidth),scrub:1,pin:'.lp-chain-pin',invalidateOnRefresh:true}});
+    }
+    gsap.utils.toArray('[data-spot]').forEach((el,i)=>{
+      gsap.fromTo(el,{opacity:0,y:30},{opacity:1,y:0,duration:.8,ease:'power3.out',scrollTrigger:{trigger:'.lp-spotlight',start:'top 60%'},delay:i*.1});
+    });
+    ScrollTrigger.refresh();
+  }
+}
+function destroyLanding(){
+  stopCanvas();
+  if(window.ScrollTrigger){ScrollTrigger.getAll().forEach(t=>t.kill());}
+  if(lenis){lenis.destroy();lenis=null;}
+  document.getElementById('landing-view').innerHTML='';
+}
+function lpScrollTo(sel){const el=document.querySelector(sel);if(!el)return;if(lenis){lenis.scrollTo(el,{offset:0});}else{el.scrollIntoView({behavior:'smooth'});}}
+
+// ── VIEW ROUTER (landing ⇄ app) with veil transition ──────────────────────────
+function showLanding(skipHash){
+  const veil=document.getElementById('veil');veil.classList.add('show');
+  setTimeout(()=>{
+    document.body.classList.remove('app-active');document.body.classList.add('landing-active');
+    window.scrollTo(0,0);
+    initLanding();
+    if(!skipHash) location.hash='';
+    setTimeout(()=>veil.classList.remove('show'),60);
+  },500);
+}
+function enterApp(id){
+  const veil=document.getElementById('veil');veil.classList.add('show');
+  setTimeout(()=>{
+    destroyLanding();
+    document.body.classList.remove('landing-active');document.body.classList.add('app-active');
+    window.scrollTo(0,0);
+    go(id||'dossier');
+    setTimeout(()=>veil.classList.remove('show'),60);
+  },500);
+}
+function backToHome(){showLanding();}
+
 // ── ROUTING ───────────────────────────────────────────────────────────────────
 window.addEventListener('hashchange', () => {
-  const id = location.hash.replace(/^#/, '') || 'welcome';
-  if (id === 'welcome' || T[id]) go(id, true);
+  const raw = location.hash.replace(/^#/, '');
+  if(raw==='' || raw==='home' || raw==='landing'){ if(!document.body.classList.contains('landing-active')) showLanding(true); return; }
+  const id = raw || 'welcome';
+  if (id === 'welcome' || id === 'dossier' || T[id]){
+    if(!document.body.classList.contains('app-active')){ enterApp(id); }
+    else go(id, true);
+  }
 });
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 (function() {
-  const id = location.hash.replace(/^#/, '') || 'welcome';
-  go((id === 'welcome' || T[id]) ? id : 'welcome', true);
+  const raw = location.hash.replace(/^#/, '');
+  if(raw==='' || raw==='home' || raw==='landing'){
+    document.body.classList.add('landing-active');
+    initLanding();
+  } else {
+    const id = (raw==='dossier' || T[raw]) ? raw : 'welcome';
+    document.body.classList.add('app-active');
+    go(id, true);
+  }
 })();
 </script>
 </body>

@@ -623,6 +623,50 @@ const HANDOFFS = {
 // ── STATE ────────────────────────────────────────────────────────────────────
 let guide = false;
 
+// ── RUNTIME SAFETY: API TIMEOUTS ─────────────────────────────────────────────
+// On Vercel, this file is static. Several tools call Render/free-tier services.
+// If any one service is asleep or hangs, the UI can look "broken" forever.
+// This wrapper makes every fetch fail fast instead of freezing the app.
+const DRUGIQ_REQUEST_TIMEOUT_MS = 35000;
+const DRUGIQ_PROBE_TIMEOUT_MS = 45000;
+const __drugiqNativeFetch = window.fetch ? window.fetch.bind(window) : null;
+
+async function fetchTimeout(url, options = {}, timeoutMs = DRUGIQ_REQUEST_TIMEOUT_MS) {
+  if (!__drugiqNativeFetch) throw new Error('fetch_not_available');
+
+  if (typeof AbortController === 'undefined') {
+    return __drugiqNativeFetch(url, options);
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await __drugiqNativeFetch(url, {
+      ...options,
+      signal: options.signal || controller.signal
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+if (__drugiqNativeFetch) {
+  window.fetch = function(url, options = {}) {
+    return fetchTimeout(url, options, DRUGIQ_REQUEST_TIMEOUT_MS);
+  };
+}
+
+function withTimeout(promise, timeoutMs, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error((label || 'request') + ' timed out')), timeoutMs)
+    )
+  ]);
+}
+
+
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function go(id, skipHash) {
   document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
@@ -710,7 +754,7 @@ function welcomeHTML() {
         <div class="dstep"><span class="dsnum">07</span><span><strong>BioSignal</strong> → biomarker panel for patient stratification</span></div>
         <div class="dstep"><span class="dsnum">08</span><span><strong>TrialMatch</strong> → 58yo male NSCLC → matching recruiting trials</span></div>
       </div>
-      <p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px">Powered by Groq · Llama 3.3 70B · Free · No login required</p>
+      <p style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px">Powered by Groq · GPT-OSS-120B · Free · No login required</p>
     </div>
   </div>`;
 }
@@ -1516,7 +1560,11 @@ async function orchestrate(candidate){
   const active = DOSSIER_PROBES.filter(pr => !(pr.skipIf && pr.skipIf(candidate)));
   const settled = await Promise.allSettled(active.map(async pr => {
     const params = pr.build(candidate);
-    const data = await callTool(pr.tool, params);
+    const data = await withTimeout(
+      callTool(pr.tool, params),
+      DRUGIQ_PROBE_TIMEOUT_MS,
+      pr.label
+    );
     return { key: pr.key, tool: pr.tool, label: pr.label, data };
   }));
   const probes = {};
@@ -1890,7 +1938,7 @@ function rTrial(d,p){
       +'<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:10px">'
       +'<div style="min-width:48px;height:48px;border-radius:50%;background:'+scoreCol+';display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:14px;color:#0a0a0a;flex-shrink:0">'+score+'</div>'
       +'<div style="flex:1;min-width:0">'
-      +'<p style="font-size:13px;font-weight:600;color:var(--text1);margin-bottom:6px;line-height:1.4">'+(tr.title||'Unknown Trial')+'</p>'
+      +'<p style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.4">'+(tr.title||'Unknown Trial')+'</p>'
       +'<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">'
       +'<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:'+scoreCol+';background:'+scoreBg+';padding:2px 8px;border-radius:3px;border:1px solid '+scoreCol+'40">'+matchLabel+'</span>'
       +(tr.phase?'<span style="font-family:var(--mono);font-size:10px;color:var(--text3);background:rgba(255,255,255,.05);padding:2px 8px;border-radius:3px">'+tr.phase+'</span>':'')
@@ -2824,14 +2872,29 @@ window.addEventListener('hashchange', () => {
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 (function() {
-  const raw = location.hash.replace(/^#/, '');
-  if(raw==='' || raw==='home' || raw==='landing'){
-    document.body.classList.add('landing-active');
-    initLanding();
-  } else {
-    const id = (raw==='dossier' || T[raw]) ? raw : 'welcome';
+  try {
+    const raw = location.hash.replace(/^#/, '');
+    if(raw==='' || raw==='home' || raw==='landing'){
+      document.body.classList.add('landing-active');
+      initLanding();
+    } else {
+      const id = (raw==='dossier' || T[raw]) ? raw : 'welcome';
+      document.body.classList.add('app-active');
+      go(id, true);
+    }
+  } catch (e) {
+    console.error('DrugIQ startup error:', e);
+    document.body.classList.remove('landing-active');
     document.body.classList.add('app-active');
-    go(id, true);
+
+    try {
+      go('welcome', true);
+    } catch (_) {
+      const content = document.getElementById('content');
+      if (content) {
+        content.innerHTML = '<div class="ecard"><div><p class="etitle">Startup error</p><p class="emsg">DrugIQ loaded, but the landing animation failed. Refresh the page or open #welcome.</p></div></div>';
+      }
+    }
   }
 })();
 </script>

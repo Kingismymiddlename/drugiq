@@ -880,11 +880,44 @@ async function callTool(id,p){
   const base=T[id].url;
 
   if(id==='scisynth'){
-    const s=await ag(base+'/search',{query:p.hypothesis,max_results:15});
-    const papers=s.papers||[];
-    if(!papers.length)return{verdict:'Insufficient Evidence',confidence:'Low',summary:'No papers found. Try rephrasing your hypothesis.',keyFindings:[],_papers:[]};
-    const res=await ap(base+'/synthesize',{hypothesis:p.hypothesis,papers});
-    return{...res,_papers:papers};
+    const s = await ag(base + '/search', {
+      query: p.hypothesis,
+      max_results: 8
+    });
+
+    const papers = s.papers || [];
+
+    if (!papers.length) {
+      return {
+        verdict: 'Insufficient Evidence',
+        confidence: 'Low',
+        summary: 'No papers found. Try rephrasing your hypothesis.',
+        keyFindings: [],
+        _papers: []
+      };
+    }
+
+    // Keep the displayed papers, but send a compact version to Groq.
+    // This prevents Groq 413 / request-too-large errors.
+    const papersForAI = papers.slice(0, 8).map(paper => ({
+      pmid: paper.pmid || '',
+      title: paper.title || 'No title',
+      abstract: (paper.abstract || 'No abstract available').slice(0, 900),
+      year: paper.year || 'Unknown',
+      journal: paper.journal || 'Unknown Journal',
+      authors: paper.authors || 'Unknown authors',
+      citations: paper.citations ?? null
+    }));
+
+    const res = await ap(base + '/synthesize', {
+      hypothesis: p.hypothesis,
+      papers: papersForAI
+    });
+
+    return {
+      ...res,
+      _papers: papers
+    };
   }
 
   if(id==='targetscope'){

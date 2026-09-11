@@ -1,2 +1,0 @@
-# Official SDK release that includes the Atlas client (8 September 2026).
-alphagenome==0.9.0

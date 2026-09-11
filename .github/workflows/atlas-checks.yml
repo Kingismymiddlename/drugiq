@@ -1,0 +1,73 @@
+name: Atlas preview checks
+on:
+  push:
+    branches: [feature/alphagenome-variant-evidence]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'api/atlas.py'
+      - 'assets/variant-evidence.js'
+      - 'variant-evidence.html'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - 'vercel.json'
+      - '.github/workflows/atlas-checks.yml'
+permissions:
+  contents: read
+concurrency:
+  group: atlas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python request and security tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Original application preservation and build tests
+        run: node --test tests/build.test.mjs
+      - name: JavaScript syntax
+        run: node --check assets/variant-evidence.js
+      - name: Install browser test tooling
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: In-memory browser regression checks (mocked providers)
+        run: |
+          ALPHAGENOME_ENABLED=true node scripts/build-variant.mjs
+          python tests/browser_smoke.py
+      - name: Preserve test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-browser-reports
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 7
+  official-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install official Atlas client
+        run: python -m pip install --no-cache-dir -r requirements.txt
+      - name: Validate resolved dependencies
+        run: python -m pip check
+      - name: Actual SDK types and score conversion (no API calls)
+        run: python tests/sdk_smoke.py
+      - name: Report dependency footprint for deployment review
+        shell: bash
+        run: |
+          python -m pip list
+          python -c "import pathlib,site; p=pathlib.Path(site.getsitepackages()[0]); total=sum(f.stat().st_size for f in p.rglob('*') if f.is_file()); print('Installed site-packages bytes:',total); print('This is not a Vercel bundle measurement; preview build must also pass.')"

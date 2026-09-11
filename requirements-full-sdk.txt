@@ -1,0 +1,2 @@
+# Full upstream SDK for the reference compatibility job only; deployment uses pyproject.toml.
+alphagenome==0.9.0

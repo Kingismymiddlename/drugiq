@@ -1,0 +1,101 @@
+name: Atlas preview checks
+on:
+  push:
+    branches: [feature/alphagenome-variant-evidence]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'api/atlas.py'
+      - 'assets/variant-evidence.js'
+      - 'variant-evidence.html'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - '.python-version'
+      - 'requirements-full-sdk.txt'
+      - 'vercel.json'
+      - '.github/workflows/atlas-checks.yml'
+permissions:
+  contents: read
+concurrency:
+  group: atlas-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python request, security and packaging tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Original application preservation and build tests
+        run: node --test tests/build.test.mjs
+      - name: JavaScript syntax
+        run: node --check assets/variant-evidence.js
+      - name: Install browser test tooling
+        run: |
+          python -m pip install playwright==1.57.0
+          python -m playwright install --with-deps chromium
+      - name: In-memory browser regression checks (mocked providers)
+        run: |
+          ALPHAGENOME_ENABLED=true node scripts/build-variant.mjs
+          python tests/browser_smoke.py
+      - name: Preserve test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-browser-reports
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 7
+  official-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install complete official Atlas SDK for comparison
+        run: python -m pip install --no-cache-dir -r requirements-full-sdk.txt
+      - name: Validate complete SDK dependencies
+        run: python -m pip check
+      - name: Actual SDK types and score conversion (no API calls)
+        run: python tests/sdk_smoke.py
+      - name: Actual SDK transport contract with synthetic protocol messages
+        run: python tests/sdk_transport_smoke.py
+  deployment-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install the same uv version used by the reported Vercel build
+        run: python -m pip install uv==0.10.11
+      - name: Install isolated deployment dependencies from pyproject.toml
+        run: uv sync --no-dev
+      - name: Test the actual reduced runtime (not the full SDK environment)
+        run: |
+          uv run --no-sync python tests/sdk_smoke.py
+          uv run --no-sync python tests/sdk_transport_smoke.py
+          uv run --no-sync python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Enforce deployment dependency budget and excluded-package checks
+        run: uv run --no-sync python scripts/check-runtime-size.py
+      - name: Preserve dependency evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-runtime-size
+          path: |
+            reports/runtime-size.json
+            uv.lock
+          if-no-files-found: ignore
+          retention-days: 7

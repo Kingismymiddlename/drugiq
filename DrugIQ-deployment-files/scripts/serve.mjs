@@ -1,0 +1,13 @@
+import http from 'node:http';
+import {readFile} from 'node:fs/promises';
+import {resolve,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {nodeAdapter} from '../lib/adapter.mjs';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const manifest=JSON.parse(await readFile(resolve(root,'dist/site.json'),'utf8'));
+const port=Number(process.env.PORT||3000),host='127.0.0.1';
+manifest.config.mcpAllowedOrigins=[...manifest.config.mcpAllowedOrigins,`http://${host}:${port}`];
+const server=http.createServer((req,res)=>nodeAdapter(req,res,manifest));
+server.requestTimeout=15000;server.headersTimeout=10000;
+server.listen(port,host,()=>console.log(`DrugIQ local verification server: http://${host}:${port}`));
+for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>server.close(()=>process.exit(0)));

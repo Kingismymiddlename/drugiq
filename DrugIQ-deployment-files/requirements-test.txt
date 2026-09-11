@@ -1,0 +1,5 @@
+# Optional independent browser/structure checks only. Not application runtime dependencies.
+playwright==1.57.0
+Pillow==12.3.0
+beautifulsoup4==4.14.3
+jsonschema==4.26.0

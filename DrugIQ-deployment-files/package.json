@@ -1,0 +1,14 @@
+{
+  "name": "drugiq-agent-ready",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "verify": "node scripts/verify.mjs",
+    "check": "npm run build && npm test && node scripts/verify.mjs --local"
+  }
+}

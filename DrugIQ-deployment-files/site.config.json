@@ -1,0 +1,12 @@
+{
+  "name": "DrugIQ",
+  "url": "https://drugiq.vercel.app",
+  "description": "DrugIQ is a research workspace for exploring literature, targets, compounds and clinical trials, with eleven specialist tools and a Candidate Dossier.",
+  "contentUpdated": "2026-09-10",
+  "contactEmail": null,
+  "organization": null,
+  "sameAs": [],
+  "googleSiteVerification": null,
+  "privacyOperatorReviewComplete": false,
+  "mcpAllowedOrigins": ["https://drugiq.vercel.app"]
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "framework": null,
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci --ignore-scripts --no-audit --no-fund",
+  "outputDirectory": "dist/public",
+  "functions": {
+    "api/site.mjs": {
+      "includeFiles": "dist/**",
+      "maxDuration": 15
+    }
+  },
+  "routes": [
+    { "src": "/(.*)", "dest": "/api/site?__drugiq_path=/$1" }
+  ]
+}

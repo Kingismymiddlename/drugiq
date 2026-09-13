@@ -21,7 +21,7 @@
       n: 3, key: 'genomics', title: 'Validate Genomics', lead: 'atlas',
       question: 'Does human variation support or challenge the biology?',
       why: 'Before committing to a molecule, examine variant-level evidence. AlphaGenome adds regulatory and genomic context; AlphaMissense focuses on missense protein effects.',
-      tools: 'AlphaGenome Atlas · AlphaMissense', highlight: true
+      tools: 'AlphaGenome Atlas · AlphaMissense'
     },
     {
       n: 4, key: 'molecule', title: 'Evaluate Molecule', lead: 'bindpredict',

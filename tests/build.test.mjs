@@ -29,12 +29,36 @@ test('enabled journey build preserves original homepage and adds one Atlas link'
   assert.equal((home.match(/data-atlas-nav/g) || []).length, 1);
 });
 
-test('injected assets occur after the original application script', async () => {
+test('journey stylesheet is inside the real document head', async () => {
+  const {home} = await build(root, true);
+  const cssPos = home.indexOf('/assets/research-journey.css');
+  const firstHeadClose = home.indexOf('</head>');
+  const firstBodyOpen = home.indexOf('<body');
+  assert.ok(cssPos > 0);
+  assert.ok(cssPos < firstHeadClose, 'journey stylesheet must be inserted before the real first </head>');
+  assert.ok(firstHeadClose < firstBodyOpen, 'document head must close before body begins');
+});
+
+test('journey scripts are after the original application script and before final body close', async () => {
   const {home} = await build(root, true);
   const originalTail = '<script>uxInstall();</script>';
+  const finalBodyClose = home.lastIndexOf('</body>');
   assert.ok(source.includes(originalTail));
   assert.ok(home.indexOf('/assets/research-journey.js') > home.indexOf(originalTail));
   assert.ok(home.indexOf('/assets/research-copilot.js') > home.indexOf(originalTail));
+  assert.ok(home.indexOf('/assets/research-journey.js') < finalBodyClose);
+  assert.ok(home.indexOf('/assets/research-copilot.js') < finalBodyClose);
+});
+
+test('injected asset tags are not inside original inline JavaScript templates', async () => {
+  const {home} = await build(root, true);
+  const firstBodyOpen = home.indexOf('<body');
+  const realHead = home.slice(0, firstBodyOpen);
+  assert.ok(realHead.includes('/assets/research-journey.css'));
+  const originalScriptEnd = home.indexOf('<script>uxInstall();</script>') + '<script>uxInstall();</script>'.length;
+  const tail = home.slice(originalScriptEnd);
+  assert.ok(tail.includes('/assets/research-journey.js'));
+  assert.ok(tail.includes('/assets/research-copilot.js'));
 });
 
 test('variant page keeps original content and receives journey only', async () => {
@@ -42,4 +66,5 @@ test('variant page keeps original content and receives journey only', async () =
   assert.equal(clean(variantHome, false), variantSource);
   assert.ok(variantHome.includes('/assets/research-journey.js'));
   assert.ok(!variantHome.includes('/assets/research-copilot.js'));
+  assert.ok(variantHome.indexOf('/assets/research-journey.css') < variantHome.indexOf('</head>'));
 });

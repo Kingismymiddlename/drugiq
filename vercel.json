@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "node -e \"console.log('Static frontend needs no dependency install; Vercel builds the Python API separately.')\"",
-  "buildCommand": "node scripts/build-variant.mjs",
+  "buildCommand": "node scripts/build-safe.mjs",
   "outputDirectory": "atlas-public",
   "functions": {
     "api/atlas.py": {

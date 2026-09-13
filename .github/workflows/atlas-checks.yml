@@ -7,6 +7,8 @@ on:
     paths:
       - 'api/atlas.py'
       - 'assets/variant-evidence.js'
+      - 'assets/research-journey.js'
+      - 'assets/research-copilot.js'
       - 'variant-evidence.html'
       - 'scripts/**'
       - 'tests/**'
@@ -37,7 +39,10 @@ jobs:
       - name: Original application preservation and build tests
         run: node --test tests/build.test.mjs
       - name: JavaScript syntax
-        run: node --check assets/variant-evidence.js
+        run: |
+          node --check assets/variant-evidence.js
+          node --check assets/research-journey.js
+          node --check assets/research-copilot.js
       - name: Install browser test tooling
         run: |
           python -m pip install playwright==1.57.0

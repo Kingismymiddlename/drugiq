@@ -4,14 +4,15 @@ import {fileURLToPath} from 'node:url';
 
 const JOURNEY_CSS = '<link rel="stylesheet" href="/assets/research-journey.css">';
 const JOURNEY_JS = '<script src="/assets/research-journey.js" defer></script>';
+const COPILOT_JS = '<script src="/assets/research-copilot.js" defer></script>';
 
-function injectJourney(html, enabled) {
+function injectJourney(html, enabled, includeCopilot = false) {
   let out = html;
   if (!out.includes('<html lang="en"')) throw new Error('Expected html root not found while adding journey metadata.');
   out = out.replace('<html lang="en"', `<html lang="en" data-atlas-enabled="${enabled ? 'true' : 'false'}"`);
   if (!out.includes('</head>') || !out.includes('</body>')) throw new Error('Expected document boundaries not found while adding journey assets.');
   out = out.replace('</head>', `${JOURNEY_CSS}\n</head>`);
-  out = out.replace('</body>', `${JOURNEY_JS}\n</body>`);
+  out = out.replace('</body>', `${JOURNEY_JS}${includeCopilot ? '\n' + COPILOT_JS : ''}\n</body>`);
   return out;
 }
 
@@ -35,8 +36,8 @@ export async function build(root = path.resolve(path.dirname(fileURLToPath(impor
     );
   }
 
-  home = injectJourney(home, enabled);
-  const variantHome = injectJourney(variantSource, enabled);
+  home = injectJourney(home, enabled, true);
+  const variantHome = injectJourney(variantSource, enabled, false);
 
   await writeFile(path.join(output, 'index.html'), home);
   await writeFile(path.join(output, 'assets/drugiq-theme.css'), theme);
@@ -44,8 +45,9 @@ export async function build(root = path.resolve(path.dirname(fileURLToPath(impor
   await cp(path.join(root, 'assets/variant-evidence.js'), path.join(output, 'assets/variant-evidence.js'));
   await cp(path.join(root, 'assets/research-journey.css'), path.join(output, 'assets/research-journey.css'));
   await cp(path.join(root, 'assets/research-journey.js'), path.join(output, 'assets/research-journey.js'));
+  await cp(path.join(root, 'assets/research-copilot.js'), path.join(output, 'assets/research-copilot.js'));
 
-  console.log(`DrugIQ static build: guided research journey enabled; AlphaGenome ${enabled ? 'enabled and promoted' : 'server feature disabled'}.`);
+  console.log(`DrugIQ static build: guided research journey and Research Copilot enabled; AlphaGenome ${enabled ? 'enabled and promoted' : 'server feature disabled'}.`);
   return {output, home, source, variantHome};
 }
 

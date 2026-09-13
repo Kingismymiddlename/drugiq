@@ -1,0 +1,80 @@
+name: Live production smoke test
+
+on:
+  push:
+    branches: [chore/live-production-smoke-20260913]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify DrugIQ production frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-delay 3 --max-time 90 https://drugiq.vercel.app/ -o /tmp/home.html
+          grep -q 'research-journey.js' /tmp/home.html
+          grep -q 'research-copilot.js' /tmp/home.html
+          curl -fsSL --retry 4 --retry-delay 3 --max-time 90 https://drugiq.vercel.app/assets/research-copilot.js -o /tmp/copilot.js
+          grep -q 'DrugIQ Research Copilot' /tmp/copilot.js
+          curl -fsSL --retry 4 --retry-delay 3 --max-time 90 https://drugiq.vercel.app/assets/research-journey.js -o /tmp/journey.js
+          grep -q 'Validate Genomics' /tmp/journey.js
+          curl -fsSL --retry 4 --retry-delay 3 --max-time 90 https://drugiq.vercel.app/variant-evidence.html -o /tmp/variant.html
+          grep -q 'Variant Evidence' /tmp/variant.html
+
+      - name: Verify AlphaGenome production status
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 4 --retry-delay 3 --max-time 90 https://drugiq.vercel.app/api/atlas -o /tmp/atlas.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/atlas.json'))
+          assert data.get('service') == 'DrugIQ Atlas', data
+          assert data.get('enabled') is True, data
+          assert data.get('configured') is True, data
+          assert data.get('ready') is True, data
+          assert data.get('requires_research_password') is True, data
+          print('Atlas status ready')
+          PY
+
+      - name: Verify SciSynth and Research Copilot backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-delay 4 --max-time 120 https://scisynth-server.onrender.com/health -o /tmp/health.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/health.json'))
+          assert data.get('status') == 'ok', data
+          assert data.get('groq_key_configured') is True, data
+          print('SciSynth health ready')
+          PY
+          curl -fsSL --retry 5 --retry-delay 4 --max-time 120 https://scisynth-server.onrender.com/openapi.json -o /tmp/openapi.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/openapi.json'))
+          paths=data.get('paths', {})
+          assert '/chat' in paths, sorted(paths)
+          assert '/synthesize' in paths, sorted(paths)
+          assert '/search' in paths, sorted(paths)
+          assert '/health' in paths, sorted(paths)
+          print('Research Copilot route present')
+          PY
+          curl -fsSL --retry 2 --retry-delay 3 --max-time 120 \
+            -X POST https://scisynth-server.onrender.com/chat \
+            -H 'Content-Type: application/json' \
+            --data '{"system":"You are the DrugIQ Research Copilot. Answer briefly.","messages":[{"role":"user","content":"What is DrugIQ for? Answer in one sentence."}],"context":{"smoke_test":true}}' \
+            -o /tmp/chat.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/chat.json'))
+          assert not data.get('error'), data
+          reply=(data.get('reply') or '').strip()
+          assert len(reply) >= 10, data
+          print('Research Copilot live reply:', reply[:160])
+          PY

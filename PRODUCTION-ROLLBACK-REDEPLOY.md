@@ -1,0 +1,1 @@
+Emergency production rollback marker. This commit intentionally changes no application behavior. It forces Vercel to create a fresh production deployment from the restored known-good DrugIQ commit after a broken build artifact remained attached to the production domain.

@@ -7,6 +7,12 @@ const SCRIPT_CLOSE = '<' + '/script>';
 const JOURNEY_JS = '<script src="/assets/research-journey.js" defer>' + SCRIPT_CLOSE;
 const COPILOT_JS = '<script src="/assets/research-copilot.js" defer>' + SCRIPT_CLOSE;
 
+function insertBeforeFirst(html, marker, content) {
+  const index = html.indexOf(marker);
+  if (index < 0) throw new Error(`Expected first ${marker} boundary not found.`);
+  return html.slice(0, index) + content + html.slice(index);
+}
+
 function insertBeforeLast(html, marker, content) {
   const index = html.lastIndexOf(marker);
   if (index < 0) throw new Error(`Expected final ${marker} boundary not found.`);
@@ -18,7 +24,11 @@ function injectJourney(html, enabled, includeCopilot = false) {
   if (!out.includes('<html lang="en"')) throw new Error('Expected html root not found while adding journey metadata.');
   out = out.replace('<html lang="en"', `<html lang="en" data-atlas-enabled="${enabled ? 'true' : 'false'}"`);
   if (!out.includes('</head>') || !out.includes('</body>')) throw new Error('Expected document boundaries not found while adding journey assets.');
-  out = insertBeforeLast(out, '</head>', `${JOURNEY_CSS}\n`);
+
+  // DrugIQ's print/export JavaScript contains literal </head> and </body> strings.
+  // The real document head is the first </head>; the real document body is the final </body>.
+  // Using those two structural boundaries prevents assets from being injected into template strings.
+  out = insertBeforeFirst(out, '</head>', `${JOURNEY_CSS}\n`);
   out = insertBeforeLast(out, '</body>', `${JOURNEY_JS}${includeCopilot ? '\n' + COPILOT_JS : ''}\n`);
   return out;
 }

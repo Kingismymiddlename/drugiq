@@ -1,0 +1,1 @@
+This file records the post-rollback restoration plan only. Production behavior is unchanged. Guided journey and Research Copilot will be rebuilt and validated on a separate preview branch before any future production promotion.

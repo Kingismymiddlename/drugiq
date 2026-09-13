@@ -14,7 +14,8 @@ function stripJourney(html) {
     .replace(' data-atlas-enabled="false"','')
     .replace(' data-atlas-enabled="true"','')
     .replace('<link rel="stylesheet" href="/assets/research-journey.css">\n','')
-    .replace('<script src="/assets/research-journey.js" defer></script>\n','');
+    .replace('<script src="/assets/research-journey.js" defer></script>\n','')
+    .replace('<script src="/assets/research-copilot.js" defer></script>\n','');
 }
 
 test('current source matches inspected original application blob',()=>{
@@ -27,6 +28,7 @@ test('guided journey build preserves original homepage logic when Atlas is disab
   assert.equal(stripJourney(home),source.toString());
   assert.ok(home.includes('/assets/research-journey.css'));
   assert.ok(home.includes('/assets/research-journey.js'));
+  assert.ok(home.includes('/assets/research-copilot.js'));
   assert.ok(home.includes('data-atlas-enabled="false"'));
   assert.equal((home.match(/data-atlas-nav/g)||[]).length,0);
 });
@@ -38,25 +40,31 @@ test('Atlas-enabled build promotes AlphaGenome without rewriting existing inline
   assert.ok(home.includes('AlphaGenome Evidence'));
   assert.ok(home.includes('journey-atlas-link'));
   assert.ok(home.includes('data-atlas-enabled="true"'));
+  assert.ok(home.includes('/assets/research-copilot.js'));
 });
 
-test('variant explorer also receives the shared journey bridge assets',async()=>{
+test('variant explorer receives journey assets but not the workspace copilot layer',async()=>{
   const {variantHome}=await build(root,true);
   assert.ok(variantHome.includes('/assets/research-journey.css'));
   assert.ok(variantHome.includes('/assets/research-journey.js'));
+  assert.ok(!variantHome.includes('/assets/research-copilot.js'));
   assert.equal(stripJourney(variantHome),variantSource);
 });
 
-test('public output contains expected journey assets and no source credentials',async()=>{
+test('public output contains expected journey and copilot assets with no source credentials',async()=>{
   await build(root,true);
   assert.deepEqual((await readdir(root+'atlas-public')).sort(),['assets','index.html','variant-evidence.html']);
-  assert.deepEqual((await readdir(root+'atlas-public/assets')).sort(),['drugiq-theme.css','research-journey.css','research-journey.js','variant-evidence.js']);
+  assert.deepEqual((await readdir(root+'atlas-public/assets')).sort(),['drugiq-theme.css','research-copilot.js','research-journey.css','research-journey.js','variant-evidence.js']);
   const atlasUI=await readFile(root+'assets/variant-evidence.js','utf8');
   const journeyUI=await readFile(root+'assets/research-journey.js','utf8');
+  const copilotUI=await readFile(root+'assets/research-copilot.js','utf8');
   assert.ok(!atlasUI.includes('localStorage'));assert.ok(!atlasUI.includes('sessionStorage'));assert.ok(!atlasUI.includes('innerHTML'));
   assert.ok(!atlasUI.includes('ALPHAGENOME_API_KEY'));
   assert.ok(!journeyUI.includes('ALPHAGENOME_API_KEY'));
   assert.ok(!journeyUI.includes('DRUGIQ_RESEARCH_TOKEN'));
+  assert.ok(!copilotUI.includes('ALPHAGENOME_API_KEY'));
+  assert.ok(!copilotUI.includes('DRUGIQ_RESEARCH_TOKEN'));
+  assert.ok(copilotUI.includes('AlphaGenome Evidence'));
 });
 
 test('Vercel routes do not rewrite or intercept existing pages or research services',async()=>{

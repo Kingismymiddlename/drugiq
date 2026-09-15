@@ -201,7 +201,9 @@
     ready = data.ready === true;
     siteKey = typeof data.turnstile_site_key === 'string' ? data.turnstile_site_key : '';
     if (!ready || !siteKey) {
-      status('atlas-status', 'AlphaGenome browser access is not configured for this deployment yet.', true);
+      const missing = Array.isArray(data.missing_configuration) ? data.missing_configuration.filter(Boolean) : [];
+      const detail = missing.length ? ` Missing Preview variables: ${missing.join(', ')}.` : '';
+      status('atlas-status', `AlphaGenome browser access is not configured for this deployment yet.${detail}`, true);
       controls();
       return;
     }

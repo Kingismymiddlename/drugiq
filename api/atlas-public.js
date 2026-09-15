@@ -57,18 +57,31 @@ function json(res, status, payload, extraHeaders = {}) {
   res.end(JSON.stringify(payload));
 }
 
-module.exports = async function handler(req, res) {
+function configuration() {
   const siteKey = String(process.env.TURNSTILE_SITE_KEY || '').trim();
   const secret = String(process.env.TURNSTILE_SECRET_KEY || '').trim();
   const researchToken = String(process.env.DRUGIQ_RESEARCH_TOKEN || '').trim();
+  const alphaGenomeKey = String(process.env.ALPHAGENOME_API_KEY || '').trim();
   const enabled = String(process.env.ALPHAGENOME_ENABLED || '').toLowerCase() === 'true';
+  const missing = [];
+  if (!enabled) missing.push('ALPHAGENOME_ENABLED');
+  if (!alphaGenomeKey) missing.push('ALPHAGENOME_API_KEY');
+  if (!researchToken) missing.push('DRUGIQ_RESEARCH_TOKEN');
+  if (!siteKey) missing.push('TURNSTILE_SITE_KEY');
+  if (!secret) missing.push('TURNSTILE_SECRET_KEY');
+  return {siteKey, secret, researchToken, alphaGenomeKey, enabled, missing};
+}
+
+module.exports = async function handler(req, res) {
+  const config = configuration();
 
   if (req.method === 'GET') {
     return json(res, 200, {
       service: 'DrugIQ Atlas browser access',
-      ready: Boolean(enabled && siteKey && secret && researchToken),
-      turnstile_site_key: siteKey,
+      ready: config.missing.length === 0,
+      turnstile_site_key: config.siteKey,
       passwordless_browser_access: true,
+      missing_configuration: config.missing,
       scope: 'Personal non-commercial research; single GRCh38 substitutions only.',
     });
   }
@@ -78,8 +91,8 @@ module.exports = async function handler(req, res) {
   if (!origin || !allowedOrigins().has(origin)) {
     return json(res, 403, {error:{code:'origin_denied',message:'This request must come from an approved DrugIQ origin.'}});
   }
-  if (!enabled || !siteKey || !secret || !researchToken) {
-    return json(res, 503, {error:{code:'not_configured',message:'Passwordless research access is not configured for this deployment.'}});
+  if (config.missing.length) {
+    return json(res, 503, {error:{code:'not_configured',message:'Passwordless research access is not configured for this deployment.', missing_configuration: config.missing}});
   }
 
   const contentType = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
@@ -109,7 +122,7 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + researchToken,
+        'Authorization': 'Bearer ' + config.researchToken,
         'Origin': origin,
       },
       body: JSON.stringify(scientificBody),

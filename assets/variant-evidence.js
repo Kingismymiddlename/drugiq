@@ -24,7 +24,7 @@
       const existing = document.querySelector('script[data-drugiq-turnstile]');
       if (existing) {
         existing.addEventListener('load', resolve, {once:true});
-        existing.addEventListener('error', reject, {once:true});
+        existing.addEventListener('error', () => reject(new Error('Cloudflare Turnstile script could not be loaded. Check browser extensions or network filtering.')), {once:true});
         return;
       }
       const script = document.createElement('script');
@@ -33,9 +33,26 @@
       script.defer = true;
       script.dataset.drugiqTurnstile = '1';
       script.addEventListener('load', resolve, {once:true});
-      script.addEventListener('error', () => reject(new Error('Browser verification could not be loaded. Please retry.')), {once:true});
+      script.addEventListener('error', () => reject(new Error('Cloudflare Turnstile script could not be loaded. Check browser extensions or network filtering.')), {once:true});
       document.head.append(script);
     });
+  }
+
+  function turnstileErrorMessage(code) {
+    const value = String(code || 'unknown');
+    const known = {
+      '110100': 'invalid Turnstile site key',
+      '110110': 'Turnstile site key was not found',
+      '110200': 'this Preview hostname is not authorized in Cloudflare Turnstile',
+      '110600': 'the Turnstile challenge timed out',
+      '110620': 'the interactive Turnstile challenge timed out',
+      '200100': 'browser clock or cached challenge problem',
+      '200500': 'the Turnstile iframe could not load, often because of an extension or network filter',
+      '400020': 'invalid Turnstile site key',
+      '400070': 'the Turnstile site key is disabled',
+    };
+    const generic = value.startsWith('300') || value.startsWith('600') ? 'Cloudflare challenge failure' : 'Cloudflare Turnstile error';
+    return `Browser verification failed (${value}: ${known[value] || generic}).`;
   }
 
   async function humanToken() {
@@ -51,19 +68,23 @@
         fn(value);
       };
       const ok = finish(resolve);
-      const fail = finish(() => reject(new Error('Browser verification could not be completed. Please retry.')));
+      const fail = finish(message => reject(new Error(message || 'Browser verification could not be completed. Please retry.')));
       try {
         widgetId = window.turnstile.render(host, {
           sitekey: siteKey,
           execution: 'execute',
           appearance: 'interaction-only',
+          retry: 'never',
           callback: token => ok(token),
-          'error-callback': fail,
-          'expired-callback': fail,
-          'timeout-callback': fail,
+          'error-callback': code => { fail(turnstileErrorMessage(code)); return true; },
+          'expired-callback': () => fail('Browser verification token expired before it could be used. Please retry.'),
+          'timeout-callback': () => fail('Browser verification timed out. Please retry.'),
+          'unsupported-callback': () => fail('This browser is not supported by Cloudflare Turnstile. Try an up-to-date Chrome, Safari, Edge, or Firefox browser.'),
         });
         window.turnstile.execute(widgetId);
-      } catch (_error) { fail(); }
+      } catch (error) {
+        fail(`Browser verification setup error: ${error?.message || 'unknown error'}.`);
+      }
     });
   }
 

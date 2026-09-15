@@ -32,16 +32,25 @@ class PackagingTests(unittest.TestCase):
 
     def test_static_install_does_not_install_a_second_python_environment(self):
         self.assertEqual(self.vercel["installCommand"],
-                         "node -e \"console.log('Static frontend needs no dependency install; Vercel builds the Python API separately.')\"")
+                         "node -e \"console.log('Static frontend needs no dependency install; Vercel builds the API functions separately.')\"")
         self.assertEqual(self.vercel["buildCommand"], "node scripts/build-variant.mjs")
         self.assertEqual(self.vercel["outputDirectory"], "atlas-public")
 
-    def test_development_directories_are_not_api_source(self):
-        excludes = self.vercel["functions"]["api/atlas.py"]["excludeFiles"]
+    def test_heavy_python_function_keeps_exclusions_and_facade_is_lightweight(self):
+        functions = self.vercel["functions"]
+        self.assertEqual(set(functions), {"api/atlas.py", "api/atlas-public.js"})
+        excludes = functions["api/atlas.py"]["excludeFiles"]
         for path in (".venv/**", "venv/**", ".uv/**", ".cache/**", "tests/**", "reports/**"):
             self.assertIn(path, excludes)
-        self.assertEqual(list(self.vercel["functions"]), ["api/atlas.py"])
-        for key in ("routes", "rewrites", "redirects", "env", "build"):
+        self.assertNotIn("excludeFiles", functions["api/atlas-public.js"])
+        self.assertTrue((ROOT / "api" / "atlas-public.js").exists())
+        self.assertFalse((ROOT / "api" / "atlas_public.py").exists())
+
+    def test_only_reviewed_passwordless_route_alias_is_added(self):
+        self.assertEqual(self.vercel.get("rewrites"), [
+            {"source": "/api/atlas_public", "destination": "/api/atlas-public"}
+        ])
+        for key in ("routes", "redirects", "env", "build"):
             self.assertNotIn(key, self.vercel)
 
     def test_existing_homepage_still_matches_original_blob(self):

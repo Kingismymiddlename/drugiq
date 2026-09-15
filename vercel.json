@@ -1,22 +1,28 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "node -e \"console.log('Static frontend needs no dependency install; Vercel builds the Python API separately.')\"",
+  "installCommand": "node -e \"console.log('Static frontend needs no dependency install; Vercel builds the API functions separately.')\"",
   "buildCommand": "node scripts/build-variant.mjs",
   "outputDirectory": "atlas-public",
   "functions": {
     "api/atlas.py": {
       "maxDuration": 60,
       "excludeFiles": "{tests/**,reports/**,assets/**,atlas-public/**,scripts/**,.github/**,.venv/**,venv/**,.uv/**,.cache/**,node_modules/**}"
+    },
+    "api/atlas-public.js": {
+      "maxDuration": 60
     }
   },
+  "rewrites": [
+    {"source": "/api/atlas_public", "destination": "/api/atlas-public"}
+  ],
   "headers": [
     {
       "source": "/variant-evidence.html",
       "headers": [
         {"key": "X-Robots-Tag", "value": "noindex, nofollow"},
         {"key": "Referrer-Policy", "value": "no-referrer"},
-        {"key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"}
+        {"key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"}
       ]
     }
   ]

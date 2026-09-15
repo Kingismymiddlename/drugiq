@@ -13,6 +13,9 @@
       "maxDuration": 60
     }
   },
+  "rewrites": [
+    {"source": "/api/atlas_public", "destination": "/api/atlas-public"}
+  ],
   "headers": [
     {
       "source": "/variant-evidence.html",

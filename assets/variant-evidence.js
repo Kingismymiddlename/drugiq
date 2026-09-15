@@ -1,31 +1,72 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  const endpoint = '/api/atlas';
+  const endpoint = '/api/atlas_public';
   let result = null;
   let controller = null;
   let ready = false;
   let connected = false;
   let busy = false;
   let revision = 0;
+  let siteKey = '';
+  let widgetId = null;
+
   const status = (id, text, error = false) => { $(id).textContent = text; $(id).dataset.error = String(error); };
   const controls = () => {
-    $('atlas-connect').disabled = !ready || busy;
     $('variant-fields').disabled = !connected || busy;
-    $('research-token').disabled = busy;
     $('atlas-export').disabled = !result || busy;
   };
   const clearResult = () => { result = null; $('atlas-results').hidden = true; $('score-rows').replaceChildren(); };
-  const disconnect = () => {
-    revision++;
-    controller?.abort(); controller = null;
-    connected = false; busy = false;
-    $('research-token').value = '';
-    $('scorer').replaceChildren(new Option('Connect to load available scorers', ''));
-    clearResult(); controls();
-    status('atlas-status', 'Session cleared. Your Google API key remains on the server.');
-    status('query-status', '');
-  };
+
+  async function loadTurnstile() {
+    if (window.turnstile) return;
+    await new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-drugiq-turnstile]');
+      if (existing) {
+        existing.addEventListener('load', resolve, {once:true});
+        existing.addEventListener('error', reject, {once:true});
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.dataset.drugiqTurnstile = '1';
+      script.addEventListener('load', resolve, {once:true});
+      script.addEventListener('error', () => reject(new Error('Browser verification could not be loaded. Please retry.')), {once:true});
+      document.head.append(script);
+    });
+  }
+
+  async function humanToken() {
+    await loadTurnstile();
+    if (!window.turnstile || !siteKey) throw new Error('Browser verification is not ready yet. Please retry.');
+    return await new Promise((resolve, reject) => {
+      const host = $('turnstile-widget');
+      host.replaceChildren();
+      let settled = false;
+      const finish = fn => value => {
+        if (settled) return;
+        settled = true;
+        fn(value);
+      };
+      const ok = finish(resolve);
+      const fail = finish(() => reject(new Error('Browser verification could not be completed. Please retry.')));
+      try {
+        widgetId = window.turnstile.render(host, {
+          sitekey: siteKey,
+          execution: 'execute',
+          appearance: 'interaction-only',
+          callback: token => ok(token),
+          'error-callback': fail,
+          'expired-callback': fail,
+          'timeout-callback': fail,
+        });
+        window.turnstile.execute(widgetId);
+      } catch (_error) { fail(); }
+    });
+  }
+
   async function request(body) {
     controller = new AbortController();
     const active = controller;
@@ -33,9 +74,10 @@
     try {
       const options = {signal: active.signal, cache: 'no-store', credentials: 'same-origin'};
       if (body) {
+        const token = await humanToken();
         options.method = 'POST';
-        options.headers = {'Content-Type': 'application/json', Authorization: 'Bearer ' + $('research-token').value.trim()};
-        options.body = JSON.stringify(body);
+        options.headers = {'Content-Type': 'application/json'};
+        options.body = JSON.stringify({...body, turnstile_token: token});
       }
       const response = await fetch(endpoint, options);
       const type = response.headers.get('content-type') || '';
@@ -46,15 +88,25 @@
     } catch (error) {
       if (error.name === 'AbortError') throw new Error('The request was cancelled or timed out. No prediction was generated.');
       throw error;
-    } finally { clearTimeout(timer); if (controller === active) controller = null; }
+    } finally {
+      clearTimeout(timer);
+      if (widgetId !== null && window.turnstile) {
+        try { window.turnstile.remove(widgetId); } catch (_error) {}
+        widgetId = null;
+      }
+      if (controller === active) controller = null;
+    }
   }
+
   for (const chromosome of [...Array.from({length: 22}, (_, i) => String(i + 1)), 'X', 'Y']) {
     $('chromosome').add(new Option('Chromosome ' + chromosome, 'chr' + chromosome));
   }
+
   function annotation(record, keys, fallback) {
     const values = keys.map(k => record?.[k]).filter(v => v !== null && v !== undefined && v !== '');
     return [...new Set(values)].map(String).join(' / ') || fallback;
   }
+
   function display(data) {
     if (!['ok', 'no_data'].includes(data.status) || !Array.isArray(data.rows) || !data.provenance) throw new Error('Atlas returned an unexpected response. No result was displayed.');
     for (const row of data.rows) if (typeof row.raw_score !== 'number' || !Number.isFinite(row.raw_score)) throw new Error('Atlas returned an invalid score. No result was displayed.');
@@ -80,25 +132,25 @@
     $('atlas-results').hidden = false;
     $('result-title').focus();
   }
-  $('atlas-connect').addEventListener('click', async () => {
-    if (busy) return;
-    if ($('research-token').value.trim().length < 32) { status('atlas-status', 'Enter the private DrugIQ research password (at least 32 characters), not the Google API key.', true); return; }
+
+  async function loadScorers() {
+    if (busy || !ready) return;
     const version = ++revision;
     connected = false; busy = true; clearResult(); controls();
-    status('atlas-status', 'Connecting to the official Atlas scorer catalog...');
+    status('atlas-status', 'Verifying browser and loading the official Atlas scorer catalog...');
     try {
       const data = await request({action: 'scorers'});
       if (version !== revision) return;
       if (!Array.isArray(data.scorers) || !data.scorers.length) throw new Error('No scorers were returned. Check Atlas access.');
       $('scorer').replaceChildren();
-      // Prefer AVI when the real service offers that exact scorer; otherwise retain its catalog order.
       const scorers = [...data.scorers].sort((a, b) => Number(b.name === 'AVI') - Number(a.name === 'AVI'));
       for (const item of scorers) $('scorer').add(new Option(item.name, item.name));
       connected = true;
-      status('atlas-status', `Connected. ${scorers.length} available scorers retrieved from Google. Your API key was not sent to this browser.`);
+      status('atlas-status', `Ready. ${scorers.length} available scorers retrieved from Google. Verification runs automatically; no DrugIQ password is required.`);
     } catch (error) { if (version === revision) status('atlas-status', error.message, true); }
     finally { if (version === revision) { busy = false; controls(); } }
-  });
+  }
+
   $('variant-form').addEventListener('submit', async event => {
     event.preventDefault();
     if (busy || !connected || !$('variant-form').reportValidity()) return;
@@ -109,7 +161,7 @@
     const body = {action: 'query', assembly: $('assembly').value, chromosome: $('chromosome').value,
       position, reference: $('reference').value, alternate: $('alternate').value, scorer: $('scorer').value};
     busy = true; clearResult(); controls();
-    status('query-status', 'Retrieving precomputed predictions. No language model is generating a score...');
+    status('query-status', 'Verifying browser and retrieving precomputed predictions. No language model is generating a score...');
     try {
       const data = await request(body);
       if (version !== revision) return;
@@ -118,6 +170,7 @@
     } catch (error) { if (version === revision) { clearResult(); status('query-status', error.message, true); } }
     finally { if (version === revision) { busy = false; controls(); } }
   });
+
   $('atlas-example').addEventListener('click', () => {
     clearResult();
     $('chromosome').value = 'chr22'; $('position').value = '36201698';
@@ -126,8 +179,7 @@
     controls();
   });
   $('variant-form').addEventListener('input', () => { if (!busy) { clearResult(); status('query-status', ''); controls(); } });
-  $('research-token').addEventListener('input', () => { connected = false; clearResult(); controls(); });
-  $('atlas-clear').addEventListener('click', disconnect);
+  $('atlas-retry').addEventListener('click', loadScorers);
   $('atlas-export').addEventListener('click', () => {
     if (!result) return;
     const blob = new Blob([JSON.stringify(result, null, 2)], {type: 'application/json'});
@@ -144,13 +196,16 @@
     const pre = win.document.createElement('pre'); pre.style.whiteSpace = 'pre-wrap'; pre.textContent = JSON.stringify(result, null, 2);
     win.document.body.append(heading, pre); win.print();
   });
-  window.addEventListener('pagehide', disconnect);
-  window.addEventListener('pageshow', () => { $('research-token').value = ''; });
-  const initialVersion = revision;
+
   request().then(data => {
-    if (initialVersion !== revision) return;
     ready = data.ready === true;
-    status('atlas-status', ready ? 'Private explorer ready. Enter your separate DrugIQ research password.' : 'Atlas is safely disabled or not configured yet. Your original DrugIQ tools remain available.');
+    siteKey = typeof data.turnstile_site_key === 'string' ? data.turnstile_site_key : '';
+    if (!ready || !siteKey) {
+      status('atlas-status', 'AlphaGenome browser access is not configured for this deployment yet.', true);
+      controls();
+      return;
+    }
     controls();
-  }).catch(error => { if (initialVersion === revision) { ready = false; status('atlas-status', error.message, true); controls(); } });
+    loadScorers();
+  }).catch(error => { ready = false; status('atlas-status', error.message, true); controls(); });
 })();
